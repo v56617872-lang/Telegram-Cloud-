@@ -1,0 +1,2294 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pair Trading Terminal — v0.6.3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{background:#050607;color:#eee;font-family:Inter,Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#080a0c,#030405);min-height:100vh}
+.app{max-width:820px;margin:auto;padding:18px;padding-bottom:88px}
+h1{font-size:24px;margin:4px 0 3px}
+.ver{font-size:12px;color:#777;margin-bottom:16px}
+.panel{background:#0c1013;border:1px solid #1b2227;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 10px 35px #0008}
+.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.field{flex:1;min-width:145px}
+.field label{display:block;color:#8d979d;font-size:12px;margin-bottom:7px}
+input{width:100%;background:#11161a;color:#fff;border:1px solid #273037;border-radius:11px;padding:12px;font-size:16px}
+select{background:#11161a;color:#fff;border:1px solid #273037;border-radius:11px;padding:12px 8px;font-size:15px}
+button{background:#161d22;color:#fff;border:1px solid #303a41;border-radius:11px;padding:12px 16px;font-weight:700;cursor:pointer}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.55;cursor:default}
+button.starActive{background:#3a340f;border-color:#8a7a1f;color:#ffd54a}
+.status{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9ba4a9;margin-bottom:12px;flex-wrap:wrap;gap:6px}
+.live{color:#35ff68;font-weight:800}
+.wait{color:#ffc52b;font-weight:800}
+.bad{color:#ff5353;font-weight:800}
+.note{font-size:12px;color:#777;line-height:1.5}
+.mono{font-family:ui-monospace,monospace}
+.small{font-size:11px;color:#69747a}
+.ok{color:#35ff68}
+.warn{color:#ffc52b}
+.err{color:#ff6464}
+
+.chartHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px}
+.chartTitle{font-size:15px;font-weight:800}
+.legend{display:flex;gap:14px;font-size:12px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.expandBtn{background:#11161a;border:1px solid #273037;color:#cfd6da;border-radius:9px;width:32px;height:32px;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.expandBtn:active{transform:scale(.94)}
+.chartWrap{position:relative;touch-action:none}
+canvas{width:100%;display:block;border-radius:12px;background:#090c0e}
+
+#perfPanel,#spreadPanel{padding-left:0;padding-right:0}
+#perfPanel .chartHead,#perfPanel .fsLabel,
+#spreadPanel .chartHead,#spreadPanel .fsLabel,#spreadPanel .chartHint{padding:0 16px}
+#candleA,#candleB{height:26vh;max-height:280px;aspect-ratio:auto}
+#spreadChart{height:30vh;max-height:340px;aspect-ratio:auto}
+.panel.fullscreenChart canvas{aspect-ratio:auto;max-height:none}
+
+.miniShift{display:flex;gap:4px;align-items:center}
+.miniShift button.tmMini{padding:3px 6px;font-size:11px;font-weight:600;border-radius:8px}
+
+.instRow{display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid #1b2227;cursor:pointer}
+.instRow:last-child{border-bottom:none}
+.instRow:active{background:#0f1418}
+.instName{font-size:14px;color:#e6e6e6}
+.instCheck{display:flex;align-items:center;padding:4px 8px;cursor:pointer}
+.instCheck input{width:18px;height:18px;accent-color:#35ff68}
+#candleChart{aspect-ratio:16/10;height:auto;max-height:60vh}
+
+.wlCard{display:flex;align-items:center;gap:10px;background:#0c1013;border:1px solid #1b2227;
+  border-radius:14px;padding:10px 12px;margin-bottom:8px;min-height:56px}
+.wlMain{flex:1;min-width:0}
+.wlName{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wlDate{font-size:11px;color:#8d979d;margin-top:2px}
+.wlStats{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:70px}
+.wlStats b{font-size:15px}
+.wlStats .small{font-size:10px;color:#8d979d}
+.wlActions{display:flex;flex-direction:column;gap:4px}
+.wlActions button{padding:4px 9px;font-size:12px;border-radius:8px}
+.chartHint{font-size:11px;color:#5c666c;margin-top:6px;text-align:center}
+.fsBar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid #1c2429}
+.fsBar .tmBtns{margin-top:0}
+.fsBar button{padding:7px 10px;font-size:11px}
+.fsLabel{font-size:11px;color:#9aa7ad;white-space:nowrap}
+
+body.noScroll{overflow:hidden}
+.panel.fullscreenChart{position:fixed;inset:0;z-index:1000;margin:0;border-radius:0;
+  display:flex;flex-direction:column;padding:14px;box-shadow:none;border:none}
+.panel.fullscreenChart .chartWrap{flex:1;min-height:0}
+.panel.fullscreenChart canvas{height:100%!important}
+.panel.fullscreenChart .chartHint{flex:none}
+
+.result{text-align:center;padding:14px 8px}
+.result small{color:#7d878d;letter-spacing:.5px}
+.result .big{font-size:50px;font-weight:950;margin:8px 0;text-shadow:0 0 24px currentColor2}
+.result .big.positive{color:#35ff68;text-shadow:0 0 24px #35ff6838}
+.result .big.negative{color:#ff6464;text-shadow:0 0 24px #ff646438}
+.result .big.neutral{color:#ddd}
+
+.miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.metric{background:#11161a;border-radius:11px;padding:10px}
+.metric span{display:block;color:#778188;font-size:11px}
+.metric b{font-size:16px}
+.positive{color:#35ff68}
+.negative{color:#ff6464}
+.neutral{color:#ddd}
+
+.crosshair{position:absolute;top:0;left:0;pointer-events:none;font-size:11px;color:#cfd6da;background:#0f1418ee;border:1px solid #263039;border-radius:8px;padding:6px 9px;display:none;white-space:nowrap;z-index:3}
+.vline{position:absolute;top:0;bottom:0;width:1px;background:#4a5560cc;pointer-events:none;display:none;z-index:2}
+.settingsRow{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.settingsRow label{display:flex;align-items:center;gap:7px;font-size:13px;color:#cfd6da;min-width:auto}
+.tmBtns{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.tmBtns button{padding:9px 12px;font-size:13px}
+
+@media(max-width:520px){.miniGrid{grid-template-columns:1fr}}
+
+/* ---------- navigation + pages ---------- */
+.page{display:none}
+.page.active{display:block}
+
+.bottomNav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0c1013;
+  border-top:1px solid #1b2227;z-index:500;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.bottomNav button{flex:1;background:none;border:none;color:#7d878d;display:flex;
+  flex-direction:column;align-items:center;gap:2px;font-size:10px;padding:6px 2px;
+  border-radius:10px;font-weight:600}
+.bottomNav button .ic{font-size:18px;line-height:1}
+.bottomNav button.active{color:#35ff68;background:#11161a}
+
+@media(min-width:900px){
+  body{display:flex}
+  .bottomNav{position:fixed;left:0;top:0;bottom:0;right:auto;width:84px;
+    flex-direction:column;border-top:none;border-right:1px solid #1b2227;padding:14px 4px;gap:2px}
+  .app{margin-left:84px;padding-bottom:18px;max-width:900px}
+}
+
+/* ---------- Scanner / Wave Lab (scoped so it can't affect the rest of the app) ---------- */
+.wlab{
+  --bg:#0A0E14;--panel:#121A22;--panel-2:#0E151B;--line:#1E2C36;
+  --ink:#E7EEF2;--ink-dim:#6F8494;--ink-faint:#3E505C;
+  --safe:#4FD1C5;--t1:#F2C94C;--t2:#F2994A;--t3:#EB5757;
+  --pos:#4FD1C5;--neg:#F2994A;--extreme:#EB5757;--noise:#8B6FD1;
+  font-family:'Space Grotesk',Inter,Arial,sans-serif;color:var(--ink);
+}
+.wlab .mono{font-family:'JetBrains Mono',monospace}
+.wlab .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:none}
+.wlab .panel-title{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);margin:0 0 14px;font-weight:600}
+.wlab .cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.wlab .field{display:flex;flex-direction:column;gap:6px}
+.wlab .field label{display:block;font-size:12px;color:var(--ink-dim);margin:0;min-width:auto}
+.wlab .field input,.wlab .field select{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 10px;font-family:'JetBrains Mono',monospace;font-size:13px;width:100%}
+.wlab .field input:focus,.wlab .field select:focus{border-color:var(--safe);outline:none}
+.wlab .apply-row{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.wlab button.primary{background:var(--safe);color:#04211F;border:none;border-radius:9px;padding:11px 18px;font-family:'Space Grotesk',Inter,Arial,sans-serif;font-weight:600;font-size:14px;cursor:pointer}
+.wlab button.primary:hover{filter:brightness(1.08)}
+.wlab button.primary:disabled{opacity:.5;cursor:default}
+.wlab .status{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim)}
+.wlab .status.err{color:var(--t3)}
+.wlab .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
+.wlab .stat{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px}
+.wlab .stat .k{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.wlab .stat .v{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600}
+.wlab table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12px}
+.wlab th,.wlab td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.wlab th{color:var(--ink-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.wlab tr.extreme{background:rgba(235,87,87,.08)}
+.wlab tr.insignificant{opacity:.45}
+.wlab .side-pos{color:var(--pos)}
+.wlab .side-neg{color:var(--neg)}
+.wlab .flag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10.5px;font-weight:600;margin-left:4px}
+.wlab .flag.extreme{background:rgba(235,87,87,.18);color:var(--extreme)}
+.wlab .flag.short{background:rgba(139,111,209,.18);color:var(--noise)}
+.wlab .table-scroll{overflow-x:auto}
+.wlab .class-badge{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.wlab .footnote{color:var(--ink-faint);font-size:11px;line-height:1.6;margin-top:16px}
+@media(max-width:520px){.wlab .cfg-grid{grid-template-columns:1fr}.wlab .stat-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- ================= SCANNER ================= -->
+<div id="page-scanner" class="page">
+  <h1>Scanner</h1>
+  <div class="ver">Wave Engine Core v0.6.1 · тестовый прогон по одной паре на реальных данных Bybit</div>
+
+  <div class="wlab">
+    <div class="panel">
+      <p class="panel-title">Настройка</p>
+      <div class="cfg-grid">
+        <div class="field">
+          <label for="scSym1">Инструмент 1 (Bybit, linear)</label>
+          <input id="scSym1" class="mono" value="XAGUSDT">
+        </div>
+        <div class="field">
+          <label for="scSym2">Инструмент 2 (Bybit, linear)</label>
+          <input id="scSym2" class="mono" value="BTCUSDT">
+        </div>
+        <div class="field" style="grid-column:1 / -1">
+          <label for="scBaseline">Точка 0 — дата и время (локальное время браузера)</label>
+          <input id="scBaseline" class="mono" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="scLookback">Окно анализа волн, дней (спец = 90)</label>
+          <input id="scLookback" class="mono" type="number" value="90" min="7" max="180">
+        </div>
+        <div class="field">
+          <label for="scRetracement">Retracement, % (спец = 75)</label>
+          <input id="scRetracement" class="mono" type="number" value="75" min="10" max="95">
+        </div>
+        <div class="field">
+          <label for="scMaxWave">Max Trading Wave, % (спец = 39)</label>
+          <input id="scMaxWave" class="mono" type="number" value="39" min="5" max="100">
+        </div>
+        <div class="field">
+          <label for="scMinFormation">Min Wave Formation, мин (спец = 5)</label>
+          <input id="scMinFormation" class="mono" type="number" value="5" min="0" max="120">
+        </div>
+      </div>
+      <div class="field" style="margin-top:4px">
+        <label for="scMinWavePct">Мин. размер волны для отображения: <b id="scMinWavePctVal" class="mono">5.0</b>% — волны мельче скрываются из таблицы и статистики</label>
+        <input id="scMinWavePct" type="range" min="0" max="30" step="0.5" value="5" style="width:100%">
+      </div>
+      <div class="apply-row">
+        <button class="primary" id="scRunBtn">Загрузить данные и посчитать</button>
+        <span class="status" id="scStatusLine">Ожидание запуска…</span>
+      </div>
+    </div>
+
+    <div class="panel" id="scResultsPanel" style="display:none">
+      <p class="panel-title">Итог</p>
+      <div class="stat-grid">
+        <div class="stat"><div class="k">Волн всего</div><div class="v" id="scStatTotal">—</div></div>
+        <div class="stat"><div class="k">Positive × Negative</div><div class="v" id="scStatSplit">—</div></div>
+        <div class="stat"><div class="k">Repeatability (мин. 5)</div><div class="v" id="scStatRepeat">—</div></div>
+        <div class="stat"><div class="k">Class</div><div class="v" id="scStatClass">—</div></div>
+      </div>
+      <p class="status" id="scFilterNote"></p>
+    </div>
+
+    <div class="panel" id="scWavesPanel" style="display:none">
+      <p class="panel-title">Обнаруженные волны</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Сторона</th><th>WaveMAX</th><th>Начало</th><th>Пик</th><th>Закрытие</th><th>Длит. (мин)</th><th>Флаги</th>
+          </tr></thead>
+          <tbody id="scWavesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="footnote">Данные — публичный API Bybit (v5, linear klines), запрашиваются пачками по 200 свечей с паузой между запросами.
+      Тикеры сюда можно подставить автоматически кнопкой «🧪 Проверить пару в Scanner» на вкладке Pair Lab — тогда здесь
+      окажется именно выбранная там пара (в формате Bybit linear), и расчёт запустится сразу. Ползунок «Мин. размер волны»
+      регулируется без повторной загрузки данных — пересчитывает таблицу и статистику мгновенно. Class Engine — один общий
+      Class по обеим сторонам, ширина полосы = % относительно максимума волны в наборе.</p>
+  </div>
+</div>
+
+<!-- ================= WATCHLIST ================= -->
+<div id="page-watchlist" class="page">
+  <h1>Watchlist</h1>
+  <div class="ver">Сохранённые пары (до 10) · расхождение и амплитуды считаются от точки старта каждой пары</div>
+  <div class="panel">
+    <button id="wlRefresh" style="width:100%">🔄 Обновить показатели</button>
+  </div>
+  <div id="wlList"></div>
+</div>
+
+<!-- ================= PAIR SELECTION ================= -->
+<div id="page-select" class="page">
+  <h1>Выбор пары</h1>
+  <div class="ver">Тапните инструмент — откроется график, он станет А (Long). Галочка у другого — станет Б (Short), откроется пара</div>
+
+  <div class="panel" id="instPreviewPanel" style="display:none">
+    <div class="chartHead">
+      <div class="chartTitle" id="previewTitle">—</div>
+      <div class="legend">
+        <select id="tfSel">
+          <option value="1m">1м</option>
+          <option value="5m">5м</option>
+          <option value="15m">15м</option>
+          <option value="1H" selected>1ч</option>
+          <option value="4H">4ч</option>
+          <option value="1D">1д</option>
+        </select>
+      </div>
+    </div>
+    <div class="chartWrap">
+      <canvas id="candleChart"></canvas>
+      <div id="candleCross" class="crosshair"></div>
+    </div>
+    <div class="note" id="previewSub" style="margin-top:8px">Инструмент А (Long): —</div>
+  </div>
+
+  <div class="panel">
+    <input id="instSearch" placeholder="Поиск, например BTC, XAU, CL" style="text-transform:uppercase">
+    <div id="instList" style="margin-top:10px;max-height:50vh;overflow:auto"></div>
+    <div class="note" id="instListStatus" style="margin-top:8px">Загружаю список инструментов…</div>
+  </div>
+</div>
+
+<!-- ================= PAIR LAB ================= -->
+<div id="page-lab" class="page active">
+<h1>Pair Trading Terminal</h1>
+<div class="ver">v0.6.3 · Pair Lab — математика и графики v0.5.1 без изменений, пара выбирается на вкладке «Пара»</div>
+
+<div class="panel">
+  <div class="status">
+    <span id="pairStatusLabel">Пара: <b>XAG-USDT-SWAP</b> / <b>CL-USDT-SWAP</b> · Источник: <b>OKX</b></span>
+    <span id="status" class="wait">● ОЖИДАНИЕ</span>
+  </div>
+  <div class="row">
+    <div class="field"><label>Дата точки старта</label>
+      <div style="display:flex;gap:6px">
+        <select id="dSel"></select>
+        <select id="mSel"></select>
+        <select id="ySel"></select>
+      </div>
+    </div>
+    <div class="field"><label>Время точки старта</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="hSel"></select>
+        <span>:</span>
+        <select id="minSel"></select>
+      </div>
+    </div>
+    <button id="start">Загрузить точку старта</button>
+  </div>
+  <div id="archiveStatus" class="note" style="margin-top:10px">
+    Точка старта пока не загружена.
+  </div>
+  <button id="addToWatchlistBtn" style="width:100%;margin-top:10px">★ В избранное</button>
+  <button id="openScannerBtn" style="width:100%;margin-top:8px">🧪 Проверить пару в Scanner</button>
+  <button id="openAlertsBtn" style="width:100%;margin-top:8px">🔔 Добавить пару в Alerts</button>
+</div>
+
+<div class="panel" id="perfPanel">
+  <div class="chartHead">
+    <div class="legend">
+      <span><i class="dot" style="background:#35ff68"></i><span id="legA">XAG</span></span>
+      <span><i class="dot" style="background:#ffb648"></i><span id="legB">CL</span></span>
+    </div>
+    <div class="legend">
+      <select id="labTfSel">
+        <option value="1m">1м</option>
+        <option value="5m">5м</option>
+        <option value="15m">15м</option>
+        <option value="1H" selected>1ч</option>
+        <option value="4H">4ч</option>
+        <option value="1D">1д</option>
+      </select>
+      <button class="expandBtn" id="perfExpand" title="На весь экран">⛶</button>
+    </div>
+  </div>
+  <div class="fsLabel" id="perfFsLabel" style="display:none">Старт: — · Сейчас: —</div>
+  <div class="chartWrap">
+    <canvas id="candleA"></canvas>
+    <div id="candleACross" class="crosshair"></div>
+  </div>
+  <div class="chartWrap" style="margin-top:8px">
+    <canvas id="candleB"></canvas>
+    <div id="candleBCross" class="crosshair"></div>
+  </div>
+</div>
+
+<div class="panel" id="spreadPanel">
+  <div class="chartHead">
+    <div class="miniShift">
+      <button class="tmMini" data-shift="-24">◀◀24ч</button>
+      <button class="tmMini" data-shift="-1">◀1ч</button>
+      <button class="tmMini" data-shift="1">1ч▶</button>
+      <button class="tmMini" data-shift="24">24ч▶▶</button>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:#35ff68"></i><span id="spreadLegPos">XAG% − CL% &gt; 0</span></span>
+      <span><i class="dot" style="background:#ff6464"></i><span id="spreadLegNeg">&lt; 0</span></span>
+      <button class="expandBtn" id="spreadExpand" title="На весь экран">⛶</button>
+    </div>
+  </div>
+  <div class="fsLabel" id="spreadFsLabel" style="display:none">Старт: — · Сейчас: —</div>
+  <div class="chartWrap">
+    <canvas id="spreadChart" height="150"></canvas>
+    <div id="spreadVLine" class="vline"></div>
+    <div id="spreadCross" class="crosshair"></div>
+  </div>
+  <div class="chartHint">Колесо мыши над графиком — сдвиг точки старта на ±1 час</div>
+</div>
+
+
+<div class="panel">
+  <div class="chartTitle">Wave Analyzer</div>
+  <div class="miniGrid">
+    <div class="metric"><span>Волн найдено</span><b id="waveCount">—</b></div>
+    <div class="metric"><span>Средняя амплитуда</span><b id="waveAvgAmp">—</b></div>
+    <div class="metric"><span>Максимальная амплитуда</span><b id="waveMaxAmp">—</b></div>
+    <div class="metric"><span>Среднее время возврата</span><b id="waveAvgTime">—</b></div>
+    <div class="metric"><span>Возвратов к нулю</span><b id="waveReturnPct">—</b></div>
+    <div class="metric"><span>Рейтинг пары</span><b id="waveGrade">—</b></div>
+  </div>
+</div>
+
+
+<div class="panel result">
+  <small id="distLabel">РАСХОЖДЕНИЕ СЕЙЧАС (XAG% − CL%)</small>
+  <div id="dist" class="big neutral">—</div>
+  <div id="formula" class="note mono">Сначала загрузите точку старта</div>
+</div>
+
+<div class="panel">
+  <div class="miniGrid">
+    <div class="metric"><span id="labelXagLive">XAG live / база</span><b id="xagLive">—</b></div>
+    <div class="metric"><span id="labelClLive">CL live / база</span><b id="clLive">—</b></div>
+    <div class="metric"><span id="labelXagPct">XAG %</span><b id="xagPct" class="neutral">—</b></div>
+    <div class="metric"><span id="labelClPct">CL %</span><b id="clPct" class="neutral">—</b></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="note">
+    Точка старта берётся из закрытия 1‑минутной свечи OKX (history‑candles). История для графиков — часовые (1H) свечи
+    от точки старта до текущего момента; текущая цена дополняется live‑потоком (WebSocket ticker). Прокрутка колеса
+    над любым графиком сдвигает точку старта на 1 час вперёд/назад и полностью пересчитывает оба графика.
+  </div>
+</div>
+
+<div class="panel" id="displaySettings">
+  <div class="chartTitle" style="margin-bottom:10px">Отображение</div>
+  <div class="settingsRow">
+    <label><input type="checkbox" id="optCrosshair" checked> Перекрестие</label>
+    <label><input type="checkbox" id="optPoints" checked> Точки на графике</label>
+    <label><input type="checkbox" id="optWaves" checked> Волны на графике</label>
+    <label>Толщина линий: <span id="lineWidthVal">2</span>px
+      <input type="range" id="optLineWidth" min="1" max="5" value="2" style="width:100px">
+    </label>
+  </div>
+</div>
+</div>
+<!-- ============== /PAIR LAB ============== -->
+
+<!-- ================= ALERTS ================= -->
+<div id="page-alerts" class="page">
+  <h1>Alerts</h1>
+  <div class="ver">Оповещения по расхождению — звук, браузер, Telegram Mini App</div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:10px">Звук и уведомления</div>
+    <div class="note" style="margin-bottom:10px">
+      Работает, пока приложение открыто (вкладка в браузере или Telegram Mini App). Настоящий push при закрытом
+      приложении потребует бота/сервера на стороне Telegram — это отдельная задача за пределами одного HTML-файла.
+    </div>
+    <div class="row">
+      <button id="alertTestSound" style="flex:1">🔊 Проверить звук</button>
+      <button id="alertEnableNotif" style="flex:1">🔔 Разрешить уведомления браузера</button>
+    </div>
+    <div class="note" id="alertEnvStatus" style="margin-top:10px">—</div>
+  </div>
+
+  <div id="alertList"></div>
+</div>
+
+<!-- ================= ACCOUNT / API & AUTO-TRADE ================= -->
+<div id="page-account" class="page">
+  <h1>API и авто-торговля</h1>
+  <div class="ver">Ключи бирж и автоматическое открытие/закрытие по уровням Alerts — тестируйте на малой сумме</div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:8px">⚠️ Прежде чем включать</div>
+    <div class="note">
+      Ключи хранятся только в памяти этого браузера (localStorage на этом устройстве) и уходят напрямую на API
+      биржи — больше никуда. Создавайте ключ с правами только «Trade» (без вывода средств), включите привязку
+      по IP, и начните с минимального размера ордера. Это не финансовая рекомендация — решение и риск на вас.
+      Приватные торговые запросы должны отправляться напрямую из браузера на OKX/Bybit; если биржа заблокирует
+      запрос политикой CORS, потребуется собственный сервер-прокси — в консоли браузера будет видна ошибка.
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:10px">Режим</div>
+    <div class="settingsRow">
+      <label><input type="radio" name="tradeMode" id="tradeModeTest" checked> Тест (ордера не отправляются, только лог)</label>
+      <label><input type="radio" name="tradeMode" id="tradeModeLive"> Реальные ордера</label>
+    </div>
+    <label class="note" style="display:flex;gap:8px;align-items:center;margin-top:10px">
+      <input type="checkbox" id="tradeLiveConfirm"> Я понимаю риски и включаю реальные ордера на свои средства
+    </label>
+  </div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:10px">OKX API</div>
+    <div class="row">
+      <div class="field"><label>API Key</label><input id="okxApiKey" class="mono" autocomplete="off"></div>
+      <div class="field"><label>Secret</label><input id="okxApiSecret" class="mono" type="password" autocomplete="off"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label>Passphrase</label><input id="okxApiPass" class="mono" type="password" autocomplete="off"></div>
+      <div class="field"><label>Режим маржи (tdMode)</label>
+        <select id="okxTdMode"><option value="cross">cross</option><option value="isolated">isolated</option><option value="cash">cash</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:10px">Bybit API</div>
+    <div class="row">
+      <div class="field"><label>API Key</label><input id="bybitApiKey" class="mono" autocomplete="off"></div>
+      <div class="field"><label>Secret</label><input id="bybitApiSecret" class="mono" type="password" autocomplete="off"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <button id="saveApiKeysBtn" style="width:100%">💾 Сохранить ключи в этом браузере</button>
+    <div class="note" id="apiKeysStatus" style="margin-top:8px">—</div>
+  </div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:6px">Авто-сделки по парам</div>
+    <div class="note">Срабатывает по тем же уровням Вход/Выход, что заданы на вкладке Alerts для этой пары —
+      настройте алармы там, здесь только сторона/объём и биржа/тип ордера для каждой ноги пары.</div>
+  </div>
+  <div id="autoTradeList"></div>
+
+  <div class="panel">
+    <div class="chartTitle" style="margin-bottom:10px">Журнал ордеров</div>
+    <div id="orderLog" class="note mono" style="max-height:220px;overflow:auto;white-space:pre-wrap">Пока пусто.</div>
+  </div>
+</div>
+
+</div>
+
+<nav class="bottomNav" id="bottomNav">
+  <button data-page="scanner"><span class="ic">📡</span><span>Scanner</span></button>
+  <button data-page="watchlist"><span class="ic">⭐</span><span>Watchlist</span></button>
+  <button data-page="select"><span class="ic">🔀</span><span>Пара</span></button>
+  <button data-page="lab" class="active"><span class="ic">📊</span><span>Pair Lab</span></button>
+  <button data-page="alerts"><span class="ic">🔔</span><span>Alerts</span></button>
+  <button data-page="account"><span class="ic">👤</span><span>API/Авто</span></button>
+</nav>
+
+<script>
+const HOUR=3600000;
+const MAX_PAGES=20; // up to ~6 months of 1H candles
+
+const pairState={a:"XAG-USDT-SWAP",b:"CL-USDT-SWAP"};
+
+const state={
+  startMs:null,
+  base:{xag:null,cl:null},
+  live:{xag:null,cl:null},
+  hist:{xag:[],cl:[]}, // [{ts,pct}]
+  waves:[],
+  ws:null,
+  loading:false
+};
+
+const settings={
+  crosshair:true,
+  points:true,
+  waves:true,
+  lineWidth:2
+};
+
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n).toLocaleString("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:8});
+const pctFmt=n=>(n>=0?"+":"")+n.toFixed(2)+"%";
+const shortName=instId=>(instId.split("-")[0]||instId);
+
+function setStatus(t,c){$("status").textContent="● "+t;$("status").className=c}
+function formatLocal(ts){return new Date(ts).toLocaleString("ru-RU",{hour12:false})}
+
+function paintMetric(el,v){
+  el.textContent=pctFmt(v);
+  el.className=v>0?"positive":v<0?"negative":"neutral";
+}
+
+// ---------- pair labels ----------
+
+function applyPairLabels(){
+  const a=shortName(pairState.a),b=shortName(pairState.b);
+  $("pairStatusLabel").innerHTML="Пара: <b>"+pairState.a+"</b> / <b>"+pairState.b+"</b> · Источник: <b>OKX</b>";
+  $("legA").textContent=a;
+  $("legB").textContent=b;
+  $("spreadLegPos").textContent=a+"% − "+b+"% > 0";
+  $("distLabel").textContent="РАСХОЖДЕНИЕ СЕЙЧАС ("+a+"% − "+b+"%)";
+  $("labelXagLive").textContent=a+" live / база";
+  $("labelClLive").textContent=b+" live / база";
+  $("labelXagPct").textContent=a+" %";
+  $("labelClPct").textContent=b+" %";
+}
+
+const LS_SESSION="ptt_session_v1";
+const LS_WATCHLIST="ptt_watchlist_v1";
+
+function saveSession(){
+  try{localStorage.setItem(LS_SESSION,JSON.stringify({a:pairState.a,b:pairState.b,startMs:state.startMs}))}catch(e){}
+}
+function loadSession(){
+  try{const raw=localStorage.getItem(LS_SESSION);return raw?JSON.parse(raw):null}catch(e){return null}
+}
+function getWatchlist(){
+  try{return JSON.parse(localStorage.getItem(LS_WATCHLIST)||"[]")}catch(e){return[]}
+}
+function setWatchlist(list){
+  try{localStorage.setItem(LS_WATCHLIST,JSON.stringify(list))}catch(e){}
+}
+
+function setPair(a,b,skipAutoLoad){
+  pairState.a=a;pairState.b=b;
+  state.startMs=null;
+  state.base={xag:null,cl:null};
+  state.live={xag:null,cl:null};
+  state.hist={xag:[],cl:[]};
+  state.waves=[];
+  applyPairLabels();
+  $("archiveStatus").textContent="Точка старта пока не загружена.";
+  $("dist").textContent="—";$("dist").className="big neutral";
+  $("formula").textContent="Сначала загрузите точку старта";
+  ["waveCount","waveAvgAmp","waveMaxAmp","waveAvgTime","waveReturnPct","waveGrade"].forEach(id=>$(id).textContent="—");
+  $("xagLive").textContent="—";$("clLive").textContent="—";
+  $("xagPct").textContent="—";$("xagPct").className="neutral";
+  $("clPct").textContent="—";$("clPct").className="neutral";
+  setStatus("ОЖИДАНИЕ","wait");
+  connect();
+  saveSession();
+  updateWatchlistButton();
+  loadLabCandles();
+  if(!skipAutoLoad){
+    const targetMs=getTargetMsFromSelects();
+    if(Number.isFinite(targetMs)&&targetMs<=Date.now())loadStartPoint(targetMs);
+  }
+}
+
+// ---------- OKX fetch helpers ----------
+
+async function getMinuteClose(instId,targetMs){
+  const url="https://www.okx.com/api/v5/market/history-candles?instId="+encodeURIComponent(instId)+
+            "&bar=1m&after="+encodeURIComponent(String(targetMs+60000))+"&limit=10";
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw new Error(instId+": HTTP "+r.status);
+  const j=await r.json();
+  if(j.code!=="0")throw new Error(instId+": OKX code "+j.code+" "+(j.msg||""));
+  const target=Number(targetMs);
+  const rows=(j.data||[]).map(x=>({ts:Number(x[0]),close:Number(x[4])}));
+  const exact=rows.find(x=>x.ts===target);
+  if(!exact){
+    const nearby=rows.sort((a,b)=>Math.abs(a.ts-target)-Math.abs(b.ts-target))[0];
+    throw new Error(instId+": точной 1m свечи нет. Ближайшая "+(nearby?formatLocal(nearby.ts):"не найдена"));
+  }
+  return exact;
+}
+
+async function getHourlyCandles(instId,fromMs,toMs){
+  let cursor=toMs+HOUR;
+  const all=[];
+  for(let page=0;page<MAX_PAGES;page++){
+    const url="https://www.okx.com/api/v5/market/history-candles?instId="+encodeURIComponent(instId)+
+              "&bar=1H&after="+encodeURIComponent(String(cursor))+"&limit=300";
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok)throw new Error(instId+": HTTP "+r.status);
+    const j=await r.json();
+    if(j.code!=="0")throw new Error(instId+": OKX code "+j.code+" "+(j.msg||""));
+    const rows=(j.data||[]).map(x=>({ts:Number(x[0]),close:Number(x[4])}));
+    if(rows.length===0)break;
+    all.push(...rows);
+    const earliest=rows[rows.length-1].ts;
+    if(earliest<=fromMs)break;
+    cursor=earliest;
+  }
+  return all.filter(x=>x.ts>=fromMs&&x.ts<=toMs).sort((a,b)=>a.ts-b.ts);
+}
+
+// ---------- canvas line chart ----------
+
+function drawChart(canvas,series,opts){
+  const dpr=window.devicePixelRatio||1;
+  const w=canvas.clientWidth,h=canvas.clientHeight||canvas.height;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const allVals=series.flatMap(s=>s.points.map(p=>p.v));
+  if(allVals.length===0){
+    ctx.fillStyle="#5c666c";ctx.font="12px Inter,Arial";ctx.textAlign="center";
+    ctx.fillText("Нет данных — загрузите точку старта",w/2,h/2);
+    return null;
+  }
+  let vMin=Math.min(...allVals,0),vMax=Math.max(...allVals,0);
+  if(vMin===vMax){vMin-=1;vMax+=1}
+  const pad=(vMax-vMin)*0.12;vMin-=pad;vMax+=pad;
+
+  const tMin=Math.min(...series.flatMap(s=>s.points.map(p=>p.t)));
+  const tMax=Math.max(...series.flatMap(s=>s.points.map(p=>p.t)));
+  const tSpan=Math.max(tMax-tMin,1);
+
+  const ml=8,mr=52,mt=10,mb=18;
+  const iw=w-ml-mr,ih=h-mt-mb;
+  const X=t=>ml+((t-tMin)/tSpan)*iw;
+  const Y=v=>mt+(1-(v-vMin)/(vMax-vMin))*ih;
+
+  // grid
+  ctx.strokeStyle="#1a2227";ctx.lineWidth=1;
+  const gridN=4;
+  ctx.fillStyle="#5c666c";ctx.font="10px Inter,Arial";ctx.textAlign="left";
+  for(let i=0;i<=gridN;i++){
+    const v=vMin+(vMax-vMin)*i/gridN;
+    const y=Y(v);
+    ctx.beginPath();ctx.moveTo(ml,y+0.5);ctx.lineTo(w-mr,y+0.5);ctx.stroke();
+    ctx.fillText(v.toFixed(1)+"%",w-mr+6,y+3);
+  }
+  // zero line emphasized
+  if(vMin<0&&vMax>0){
+    ctx.strokeStyle="#3a4650";ctx.lineWidth=1.3;
+    const y=Y(0);
+    ctx.beginPath();ctx.moveTo(ml,y+0.5);ctx.lineTo(w-mr,y+0.5);ctx.stroke();
+  }
+
+  // fill for single-series spread chart
+  if(opts&&opts.fillZero&&series.length===1){
+    const pts=series[0].points;
+    ctx.beginPath();
+    pts.forEach((p,i)=>{const x=X(p.t),y=Y(p.v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.lineTo(X(pts[pts.length-1].t),Y(0));
+    ctx.lineTo(X(pts[0].t),Y(0));
+    ctx.closePath();
+    ctx.fillStyle="#35ff6812";
+    ctx.fill();
+  }
+
+  series.forEach(s=>{
+    const pts=s.points;
+    if(pts.length===0)return;
+    ctx.lineWidth=(opts&&opts.lineWidth)||2;
+    ctx.strokeStyle=s.color;
+    ctx.beginPath();
+    pts.forEach((p,i)=>{const x=X(p.t),y=Y(p.v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.stroke();
+
+    // per-point dots (skip if too dense, keep chart readable)
+    if(opts&&opts.showPoints&&pts.length<=400){
+      ctx.fillStyle=s.color;
+      pts.forEach(p=>{ctx.beginPath();ctx.arc(X(p.t),Y(p.v),2,0,Math.PI*2);ctx.fill()});
+    }else{
+      const last=pts[pts.length-1];
+      ctx.fillStyle=s.color;
+      ctx.beginPath();ctx.arc(X(last.t),Y(last.v),3.2,0,Math.PI*2);ctx.fill();
+    }
+  });
+
+  return {X,Y,vMin,vMax,tMin,tMax,ml,mr,mt,mb,w,h};
+}
+
+function nearestPoint(arr,t){
+  if(!arr||!arr.length)return null;
+  let best=arr[0];
+  for(const p of arr){if(Math.abs(p.ts-t)<Math.abs(best.ts-t))best=p}
+  return best;
+}
+
+function drawWaveMarkers(canvas,geo,waves){
+  if(!geo||!waves||!waves.length)return;
+  const ctx=canvas.getContext("2d");
+  waves.forEach(w=>{
+    if(w.startTs>=geo.tMin&&w.startTs<=geo.tMax){
+      const x=geo.X(w.startTs);
+      ctx.save();
+      ctx.strokeStyle="#5c666c";ctx.setLineDash([3,3]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,geo.mt);ctx.lineTo(x,geo.h-geo.mb);ctx.stroke();
+      ctx.restore();
+    }
+    if(w.peakTs!=null&&w.peakTs>=geo.tMin&&w.peakTs<=geo.tMax){
+      const x=geo.X(w.peakTs),y=geo.Y(w.peakVal);
+      ctx.fillStyle=w.peakVal>=0?"#35ff68":"#ff6464";
+      ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle="#0a0d0f";ctx.lineWidth=1.2;ctx.stroke();
+    }
+    if(w.endTs!=null&&w.endTs>=geo.tMin&&w.endTs<=geo.tMax){
+      const x=geo.X(w.endTs);
+      ctx.save();
+      ctx.strokeStyle="#7c8ea8";ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(x,geo.mt);ctx.lineTo(x,geo.h-geo.mb);ctx.stroke();
+      ctx.restore();
+    }
+  });
+}
+
+function renderCharts(){
+  const spreadCanvas=$("spreadChart");
+  const drawOpts={lineWidth:settings.lineWidth,showPoints:settings.points};
+
+  analyzeWaves(); // populates state.waves + wave metric text, ahead of spread chart draw
+
+  const n=Math.min(state.hist.xag.length,state.hist.cl.length);
+  const spreadPts=[];
+  for(let i=0;i<n;i++){
+    spreadPts.push({t:state.hist.xag[i].ts,v:state.hist.xag[i].pct-state.hist.cl[i].pct});
+  }
+  const lastSpread=spreadPts.length?spreadPts[spreadPts.length-1].v:0;
+  const spreadSeries=[{name:"Spread",color:lastSpread>=0?"#35ff68":"#ff6464",points:spreadPts}];
+  const geo2=drawChart(spreadCanvas,spreadSeries,{...drawOpts,fillZero:true});
+  spreadCanvas._geo=geo2;
+  if(settings.waves)drawWaveMarkers(spreadCanvas,geo2,state.waves);
+}
+
+function renderLabCharts(){
+  renderCharts();
+  if(labCandlesA.length)drawCandleChart($("candleA"),labCandlesA);
+  if(labCandlesB.length)drawCandleChart($("candleB"),labCandlesB);
+}
+
+
+
+function computeWaveStats(histA,histB){
+  const n=Math.min(histA.length,histB.length);
+  const empty={waves:[],avgAmp:0,maxAmp:0,avgTime:0,returnPct:0,grade:"—"};
+  if(n<10)return empty;
+
+  const spread=[];
+  for(let i=0;i<n;i++){
+    spread.push({ts:histA[i].ts,value:histA[i].pct-histB[i].pct});
+  }
+
+  const waves=[];
+  let current=null;
+
+  for(let i=1;i<spread.length;i++){
+    const prev=spread[i-1].value;
+    const cur=spread[i].value;
+
+    if(current===null){
+      if(Math.abs(cur)>2){
+        current={startTs:spread[i].ts,maxAbs:Math.abs(cur),peakTs:spread[i].ts,peakVal:cur};
+      }
+    }else{
+      if(Math.abs(cur)>current.maxAbs){
+        current.maxAbs=Math.abs(cur);
+        current.peakTs=spread[i].ts;
+        current.peakVal=cur;
+      }
+      if((prev>0&&cur<=0)||(prev<0&&cur>=0)){
+        current.endTs=spread[i].ts;
+        current.duration=current.endTs-current.startTs;
+        waves.push(current);
+        current=null;
+      }
+    }
+  }
+
+  if(!waves.length)return empty;
+
+  const avgAmp=waves.reduce((s,w)=>s+w.maxAbs,0)/waves.length;
+  const maxAmp=Math.max(...waves.map(w=>w.maxAbs));
+  const avgTime=waves.reduce((s,w)=>s+w.duration,0)/waves.length;
+  const returnPct=waves.length/Math.max(spread.length/24,1);
+
+  let grade="C";
+  if(avgAmp>8&&returnPct>0.7)grade="A";
+  else if(avgAmp>5&&returnPct>0.5)grade="B";
+
+  return {waves,avgAmp,maxAmp,avgTime,returnPct,grade};
+}
+
+function analyzeWaves(){
+  const stats=computeWaveStats(state.hist.xag,state.hist.cl);
+  state.waves=stats.waves;
+  if(!stats.waves.length)return;
+
+  document.getElementById("waveCount").textContent=stats.waves.length;
+  document.getElementById("waveAvgAmp").textContent=stats.avgAmp.toFixed(2)+"%";
+  document.getElementById("waveMaxAmp").textContent=stats.maxAmp.toFixed(2)+"%";
+  document.getElementById("waveAvgTime").textContent=(stats.avgTime/3600000).toFixed(1)+" ч";
+  document.getElementById("waveReturnPct").textContent=(stats.returnPct*100).toFixed(0)+"%";
+  document.getElementById("waveGrade").textContent=stats.grade;
+}
+
+
+// ---------- live price handling ----------
+
+function updateLiveMetrics(){
+  const a=state.live.xag,b=state.live.cl;
+  if(state.base.xag!=null){
+    $("xagLive").textContent=(a!=null?fmt(a):"—")+" / "+fmt(state.base.xag);
+    if(a!=null)paintMetric($("xagPct"),(a-state.base.xag)/state.base.xag*100);
+  }
+  if(state.base.cl!=null){
+    $("clLive").textContent=(b!=null?fmt(b):"—")+" / "+fmt(state.base.cl);
+    if(b!=null)paintMetric($("clPct"),(b-state.base.cl)/state.base.cl*100);
+  }
+  // append/replace the trailing live point onto the hourly history so the chart reaches "now"
+  if(state.base.xag!=null&&state.base.cl!=null&&a!=null&&b!=null&&state.hist.xag.length){
+    const nowTs=Date.now();
+    const xagPct=(a-state.base.xag)/state.base.xag*100;
+    const clPct=(b-state.base.cl)/state.base.cl*100;
+    const lastX=state.hist.xag[state.hist.xag.length-1];
+    const lastC=state.hist.cl[state.hist.cl.length-1];
+    const point={ts:nowTs,pct:xagPct};
+    const pointC={ts:nowTs,pct:clPct};
+    if(lastX&&nowTs-lastX.ts<HOUR*2){state.hist.xag[state.hist.xag.length-1]=point}
+    else{state.hist.xag.push(point)}
+    if(lastC&&nowTs-lastC.ts<HOUR*2){state.hist.cl[state.hist.cl.length-1]=pointC}
+    else{state.hist.cl.push(pointC)}
+    renderCharts();
+
+    const d=xagPct-clPct;
+    const distEl=$("dist");
+    distEl.textContent=pctFmt(d);
+    distEl.className="big "+(d>0?"positive":d<0?"negative":"neutral");
+    $("formula").textContent=pctFmt(xagPct)+" − ("+pctFmt(clPct)+") = "+pctFmt(d);
+  }
+}
+
+// ---------- start point loading ----------
+
+async function loadStartPoint(targetMs){
+  if(state.loading)return;
+  if(targetMs>Date.now()){alert("Точка старта не может быть в будущем.");return}
+  state.loading=true;
+  $("start").disabled=true;
+  $("archiveStatus").textContent="Загружаю точку старта и часовую историю…";
+  setStatus("ЗАГРУЗКА","wait");
+  try{
+    const [xagBase,clBase]=await Promise.all([
+      getMinuteClose(pairState.a,targetMs),
+      getMinuteClose(pairState.b,targetMs)
+    ]);
+    state.startMs=targetMs;
+    state.base={xag:xagBase.close,cl:clBase.close};
+
+    const nowMs=Date.now();
+    const [xagHist,clHist]=await Promise.all([
+      getHourlyCandles(pairState.a,targetMs,nowMs),
+      getHourlyCandles(pairState.b,targetMs,nowMs)
+    ]);
+    state.hist.xag=xagHist.map(c=>({ts:c.ts,pct:(c.close-state.base.xag)/state.base.xag*100}));
+    state.hist.cl=clHist.map(c=>({ts:c.ts,pct:(c.close-state.base.cl)/state.base.cl*100}));
+
+    $("archiveStatus").innerHTML=
+      "Точка старта: <b>"+formatLocal(targetMs)+"</b> · "+shortName(pairState.a)+"0="+fmt(xagBase.close)+
+      " · "+shortName(pairState.b)+"0="+fmt(clBase.close)+" · часовых точек: "+state.hist.xag.length;
+
+    const d=new Date(targetMs-new Date().getTimezoneOffset()*60000).toISOString();
+    setSelectsFromLocalIso(d);
+
+    renderCharts();
+    updateLiveMetrics();
+    setStatus(state.live.xag!=null&&state.live.cl!=null?"LIVE":"ЖДЁМ LIVE","live");
+    saveSession();
+    updateWatchlistButton();
+  }catch(err){
+    console.error(err);
+    $("archiveStatus").textContent="Ошибка: "+err.message;
+    setStatus("ОШИБКА","bad");
+    alert("Не удалось загрузить точку старта.\n\n"+err.message);
+  }finally{
+    state.loading=false;
+    $("start").disabled=false;
+  }
+}
+
+function shiftStart(deltaHours){
+  if(state.startMs==null)return;
+  loadStartPoint(state.startMs+deltaHours*HOUR);
+}
+
+function onWheel(e){
+  e.preventDefault();
+  const deltaHours=e.deltaY>0?1:-1;
+  shiftStart(deltaHours);
+}
+
+// ---------- websocket live feed ----------
+
+function connect(){
+  if(state.ws){state.ws.onclose=null;try{state.ws.close()}catch(e){}}
+  const ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/public");
+  state.ws=ws;
+  ws.onopen=()=>{
+    ws.send(JSON.stringify({op:"subscribe",args:[
+      {channel:"tickers",instId:pairState.a},
+      {channel:"tickers",instId:pairState.b}
+    ]}));
+  };
+  ws.onmessage=e=>{
+    try{
+      const m=JSON.parse(e.data);
+      if(m.event==="subscribe")return;
+      if(m.data&&m.data[0]){
+        const id=m.data[0].instId,v=Number(m.data[0].last);
+        if(id===pairState.a)state.live.xag=v;
+        if(id===pairState.b)state.live.cl=v;
+        updateLiveMetrics();
+        if(state.live.xag!=null&&state.live.cl!=null&&state.startMs!=null)setStatus("LIVE","live");
+      }
+    }catch(err){}
+  };
+  ws.onerror=()=>setStatus("ПОТОК: ОШИБКА","bad");
+  ws.onclose=()=>{if(state.startMs!=null)setStatus("ПОТОК: ОТКЛЮЧЁН","bad");setTimeout(connect,3000)};
+}
+
+// ---------- date/time dropdown selects ----------
+
+function pad2(n){return String(n).padStart(2,"0")}
+
+function populateDateTimeSelects(){
+  const dSel=$("dSel"),mSel=$("mSel"),ySel=$("ySel"),hSel=$("hSel"),minSel=$("minSel");
+  dSel.innerHTML="";mSel.innerHTML="";ySel.innerHTML="";hSel.innerHTML="";minSel.innerHTML="";
+  for(let i=1;i<=31;i++){const o=document.createElement("option");o.value=i;o.textContent=pad2(i);dSel.appendChild(o)}
+  const months=["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+  months.forEach((m,i)=>{const o=document.createElement("option");o.value=i+1;o.textContent=pad2(i+1)+" ("+m+")";mSel.appendChild(o)});
+  const curY=new Date().getFullYear();
+  for(let y=curY-3;y<=curY;y++){const o=document.createElement("option");o.value=y;o.textContent=y;ySel.appendChild(o)}
+  for(let i=0;i<24;i++){const o=document.createElement("option");o.value=i;o.textContent=pad2(i);hSel.appendChild(o)}
+  for(let i=0;i<60;i++){const o=document.createElement("option");o.value=i;o.textContent=pad2(i);minSel.appendChild(o)}
+}
+
+function setSelectsFromLocalIso(iso){
+  // iso like "2026-08-29T14:05:00.000Z" but already shifted to local wall-clock values
+  const datePart=iso.slice(0,10),timePart=iso.slice(11,16);
+  const [y,m,d]=datePart.split("-").map(Number);
+  const [h,mi]=timePart.split(":").map(Number);
+  $("ySel").value=y;$("mSel").value=m;$("dSel").value=d;
+  $("hSel").value=h;$("minSel").value=mi;
+}
+
+function getTargetMsFromSelects(){
+  const y=Number($("ySel").value),m=Number($("mSel").value),d=Number($("dSel").value);
+  const h=Number($("hSel").value),mi=Number($("minSel").value);
+  return new Date(y,m-1,d,h,mi,0).getTime();
+}
+
+// ---------- navigation ----------
+
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  const pg=$("page-"+id);
+  if(pg)pg.classList.add("active");
+  document.querySelectorAll(".bottomNav button").forEach(b=>b.classList.toggle("active",b.dataset.page===id));
+  if(id==="lab"){
+    requestAnimationFrame(()=>requestAnimationFrame(renderLabCharts));
+  }
+  if(id==="select"&&candidateA&&previewCandles.length){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>drawCandleChart(previewCandles)));
+  }
+  if(id==="watchlist"){
+    renderWatchlist();
+  }
+  if(id==="alerts"){
+    renderAlerts();
+    updateAlertEnvStatus();
+  }
+  if(id==="account"){
+    loadApiKeysIntoFields();
+    renderAutoTradeList();
+    renderOrderLog();
+  }
+}
+document.querySelectorAll(".bottomNav button").forEach(btn=>{
+  btn.onclick=()=>showPage(btn.dataset.page);
+});
+
+// ---------- pair selection page: instrument list + candlestick preview ----------
+
+let allInstruments=[];
+let candidateA=null;
+let previewCandles=[];
+
+async function loadInstrumentList(){
+  $("instListStatus").textContent="Загружаю список инструментов…";
+  try{
+    const r=await fetch("https://www.okx.com/api/v5/public/instruments?instType=SWAP",{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    if(j.code!=="0")throw new Error("OKX code "+j.code+" "+(j.msg||""));
+    allInstruments=(j.data||[])
+      .filter(x=>x.state==="live")
+      .map(x=>x.instId)
+      .sort();
+    $("instListStatus").textContent="Инструментов: "+allInstruments.length;
+    renderInstList();
+  }catch(err){
+    console.error(err);
+    $("instListStatus").textContent="Ошибка загрузки списка: "+err.message+
+      ". Если страница открыта не по https-ссылке (например, прямо из файла на телефоне), запросы к OKX блокируются браузером — загрузите файл на Netlify Drop/GitHub Pages и откройте по ссылке.";
+  }
+}
+
+function renderInstList(){
+  const q=$("instSearch").value.trim().toUpperCase();
+  const filtered=q?allInstruments.filter(id=>id.includes(q)):allInstruments;
+  const rowsHtml=filtered.slice(0,300).map(id=>
+    '<div class="instRow" data-inst="'+id+'">'+
+      '<span class="instName">'+id+'</span>'+
+      '<label class="instCheck"><input type="checkbox" data-inst="'+id+'"></label>'+
+    '</div>'
+  ).join("");
+  $("instList").innerHTML=rowsHtml||'<div class="note">Ничего не найдено</div>';
+}
+
+$("instSearch").addEventListener("input",renderInstList);
+
+function onSelectInstrumentA(instId){
+  candidateA=instId;
+  $("instPreviewPanel").style.display="block";
+  $("previewTitle").textContent=instId;
+  $("previewSub").textContent="Инструмент А (Long): "+instId;
+  loadCandles(instId,$("tfSel").value);
+  $("instSearch").value="";
+  renderInstList();
+}
+
+function onCheckInstrumentB(instId,checkboxEl){
+  if(!candidateA){
+    checkboxEl.checked=false;
+    alert("Сначала выберите инструмент А — нажмите на его название в списке.");
+    return;
+  }
+  if(instId===candidateA){
+    checkboxEl.checked=false;
+    alert("Инструмент Б должен отличаться от инструмента А.");
+    return;
+  }
+  document.querySelectorAll('#instList input[type=checkbox]').forEach(cb=>{if(cb!==checkboxEl)cb.checked=false});
+  setPair(candidateA,instId);
+  showPage("lab");
+}
+
+$("instList").addEventListener("change",e=>{
+  if(e.target.matches('input[type=checkbox]')){
+    onCheckInstrumentB(e.target.dataset.inst,e.target);
+  }
+});
+$("instList").addEventListener("click",e=>{
+  if(e.target.closest("label.instCheck"))return; // handled by the change listener above
+  const row=e.target.closest(".instRow");
+  if(row)onSelectInstrumentA(row.dataset.inst);
+});
+
+$("tfSel").onchange=()=>{if(candidateA)loadCandles(candidateA,$("tfSel").value)};
+
+async function fetchCandlesFromOkx(instId,bar){
+  const url="https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(instId)+
+            "&bar="+encodeURIComponent(bar)+"&limit=200";
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json();
+  if(j.code!=="0")throw new Error("OKX code "+j.code+" "+(j.msg||""));
+  return (j.data||[])
+    .map(x=>({ts:Number(x[0]),o:Number(x[1]),h:Number(x[2]),l:Number(x[3]),c:Number(x[4])}))
+    .sort((a,b)=>a.ts-b.ts);
+}
+
+async function loadCandles(instId,bar){
+  $("previewSub").textContent="Инструмент А (Long): "+instId+" · загрузка свечей…";
+  try{
+    previewCandles=await fetchCandlesFromOkx(instId,bar);
+    drawCandleChart($("candleChart"),previewCandles);
+    $("previewSub").textContent="Инструмент А (Long): "+instId;
+  }catch(err){
+    console.error(err);
+    $("previewSub").textContent="Инструмент А (Long): "+instId+" · ошибка загрузки свечей: "+err.message+
+      ". Возможно, страница открыта не по https-ссылке — см. подсказку выше.";
+  }
+}
+
+let labCandlesA=[],labCandlesB=[];
+
+async function loadLabCandles(){
+  const bar=$("labTfSel").value;
+  try{
+    const [ca,cb]=await Promise.all([fetchCandlesFromOkx(pairState.a,bar),fetchCandlesFromOkx(pairState.b,bar)]);
+    labCandlesA=ca;labCandlesB=cb;
+    drawCandleChart($("candleA"),labCandlesA);
+    drawCandleChart($("candleB"),labCandlesB);
+  }catch(err){
+    console.error(err);
+  }
+}
+$("labTfSel").onchange=loadLabCandles;
+
+function shortTime(ts){
+  const d=new Date(ts);
+  return pad2(d.getDate())+"."+pad2(d.getMonth()+1)+" "+pad2(d.getHours())+":"+pad2(d.getMinutes());
+}
+
+function drawCandleChart(canvas,candles){
+  const dpr=window.devicePixelRatio||1;
+  const w=canvas.clientWidth,h=canvas.clientHeight||canvas.height||260;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  if(!candles||!candles.length){
+    ctx.fillStyle="#5c666c";ctx.font="12px Inter,Arial";ctx.textAlign="center";
+    ctx.fillText("Нет данных",w/2,h/2);
+    canvas._geo=null;
+    return;
+  }
+
+  let vMin=Math.min(...candles.map(c=>c.l)),vMax=Math.max(...candles.map(c=>c.h));
+  const pad=(vMax-vMin)*0.08||Math.abs(vMax)*0.01||1;
+  vMin-=pad;vMax+=pad;
+
+  const ml=8,mr=58,mt=10,mb=20;
+  const iw=w-ml-mr,ih=h-mt-mb;
+  const n=candles.length;
+  const slot=iw/n;
+  const bodyW=Math.max(1,Math.min(slot*0.6,14));
+
+  const X=i=>ml+i*slot+slot/2;
+  const Y=v=>mt+(1-(v-vMin)/(vMax-vMin))*ih;
+
+  ctx.strokeStyle="#1a2227";ctx.lineWidth=1;
+  ctx.fillStyle="#5c666c";ctx.font="10px Inter,Arial";ctx.textAlign="left";
+  const gridN=4;
+  for(let i=0;i<=gridN;i++){
+    const v=vMin+(vMax-vMin)*i/gridN;
+    const y=Y(v);
+    ctx.beginPath();ctx.moveTo(ml,y+0.5);ctx.lineTo(w-mr,y+0.5);ctx.stroke();
+    ctx.fillText(fmt(v),w-mr+6,y+3);
+  }
+
+  ctx.textAlign="center";
+  const labelEvery=Math.max(1,Math.round(n/6));
+  for(let i=0;i<n;i+=labelEvery){
+    ctx.fillText(shortTime(candles[i].ts),X(i),h-4);
+  }
+
+  candles.forEach((c,i)=>{
+    const x=X(i);
+    const up=c.c>=c.o;
+    ctx.strokeStyle=up?"#35ff68":"#ff6464";
+    ctx.fillStyle=up?"#35ff68":"#ff6464";
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,Y(c.h));ctx.lineTo(x,Y(c.l));ctx.stroke();
+    const yOpen=Y(c.o),yClose=Y(c.c);
+    const top=Math.min(yOpen,yClose),bh=Math.max(1,Math.abs(yClose-yOpen));
+    ctx.fillRect(x-bodyW/2,top,bodyW,bh);
+  });
+
+  const last=candles[candles.length-1];
+  const ly=Y(last.c);
+  ctx.strokeStyle="#7c8ea8";ctx.setLineDash([3,3]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ml,ly+0.5);ctx.lineTo(w-mr,ly+0.5);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="#cfd6da";ctx.textAlign="left";
+  ctx.fillText(fmt(last.c),w-mr+6,ly+3);
+
+  canvas._geo={X,ml,mr,w,n,candles};
+}
+
+function attachCandleCrosshair(canvas,crossEl){
+  canvas.addEventListener("mousemove",e=>{
+    const geo=canvas._geo;
+    if(!geo){crossEl.style.display="none";return}
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left;
+    let idx=Math.floor((mx-geo.ml)/((geo.w-geo.ml-geo.mr)/geo.n));
+    idx=Math.max(0,Math.min(geo.n-1,idx));
+    const c=geo.candles[idx];
+    if(!c){crossEl.style.display="none";return}
+    crossEl.textContent=shortTime(c.ts)+"\nO: "+fmt(c.o)+"\nH: "+fmt(c.h)+"\nL: "+fmt(c.l)+"\nC: "+fmt(c.c);
+    crossEl.style.display="block";
+    crossEl.style.top="8px";
+    let left=mx+10;
+    const tw=crossEl.offsetWidth;
+    if(left+tw>rect.width-4)left=Math.max(4,rect.width-tw-4);
+    crossEl.style.left=left+"px";
+  });
+  canvas.addEventListener("mouseleave",()=>{crossEl.style.display="none"});
+}
+attachCandleCrosshair($("candleChart"),$("candleCross"));
+attachCandleCrosshair($("candleA"),$("candleACross"));
+attachCandleCrosshair($("candleB"),$("candleBCross"));
+
+loadInstrumentList();
+
+// ---------- watchlist ----------
+
+async function fetchTicker(instId){
+  const url="https://www.okx.com/api/v5/market/ticker?instId="+encodeURIComponent(instId);
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  const j=await r.json();
+  if(j.code!=="0"||!j.data||!j.data[0])throw new Error("OKX code "+j.code);
+  return Number(j.data[0].last);
+}
+
+function isInWatchlist(){
+  if(state.startMs==null)return false;
+  return getWatchlist().some(w=>w.a===pairState.a&&w.b===pairState.b&&w.startMs===state.startMs);
+}
+function updateWatchlistButton(){
+  const btn=$("addToWatchlistBtn");
+  if(isInWatchlist()){
+    btn.textContent="★ В избранном";
+    btn.classList.add("starActive");
+  }else{
+    btn.textContent="★ В избранное";
+    btn.classList.remove("starActive");
+  }
+}
+
+$("addToWatchlistBtn").onclick=()=>{
+  if(state.startMs==null){alert("Сначала загрузите точку старта.");return}
+  const list=getWatchlist();
+  const idx=list.findIndex(w=>w.a===pairState.a&&w.b===pairState.b&&w.startMs===state.startMs);
+  if(idx>=0){
+    list.splice(idx,1);
+    setWatchlist(list);
+    updateWatchlistButton();
+    return;
+  }
+  if(list.length>=10){
+    alert("В избранном максимум 10 пар. Удалите одну на вкладке Watchlist, чтобы добавить новую.");
+    return;
+  }
+  list.push({a:pairState.a,b:pairState.b,startMs:state.startMs,baseA:state.base.xag,baseB:state.base.cl,addedAt:Date.now()});
+  setWatchlist(list);
+  updateWatchlistButton();
+};
+
+// ---------- link to Scanner (Wave Lab) with the currently selected pair ----------
+
+function toBybitSymbol(instId){
+  return shortName(instId).toUpperCase()+"USDT";
+}
+
+$("openScannerBtn").onclick=()=>{
+  const sym1=toBybitSymbol(pairState.a);
+  const sym2=toBybitSymbol(pairState.b);
+  let baselineIso=null;
+  if(state.startMs!=null){
+    baselineIso=new Date(state.startMs-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+  }
+  showPage("scanner");
+  if(window.ScannerWaveLab)window.ScannerWaveLab.setPairAndRun(sym1,sym2,baselineIso);
+};
+
+// =====================================================================
+// ALERTS — entry/exit alarm per watchlist pair (sound + browser + Telegram)
+// =====================================================================
+
+function defaultAlarm(){
+  return {enabled:false, entryPlus:10, exitPlus:0.01, entryMinus:-10, exitMinus:-0.01, state:"idle"};
+}
+
+function alStateLabel(st){
+  return st==="holdingPlus" ? "в позиции (+), ждём выход" :
+         st==="holdingMinus" ? "в позиции (−), ждём выход" :
+         "ожидание входа";
+}
+
+$("openAlertsBtn").onclick=()=>{
+  if(state.startMs==null){alert("Сначала загрузите точку старта — алармы считаются от базовой цены точки старта.");return}
+  const list=getWatchlist();
+  let idx=list.findIndex(w=>w.a===pairState.a&&w.b===pairState.b&&w.startMs===state.startMs);
+  if(idx<0){
+    if(list.length>=10){alert("В избранном максимум 10 пар. Удалите одну на вкладке Watchlist, чтобы добавить новую.");return}
+    list.push({a:pairState.a,b:pairState.b,startMs:state.startMs,baseA:state.base.xag,baseB:state.base.cl,addedAt:Date.now()});
+    idx=list.length-1;
+  }
+  list[idx].alarm=Object.assign(defaultAlarm(),list[idx].alarm||{},{enabled:true});
+  setWatchlist(list);
+  updateWatchlistButton();
+  showPage("alerts");
+};
+
+function alertCardHtml(w,i){
+  const al=Object.assign(defaultAlarm(),w.alarm||{});
+  return '<div class="panel alertCard" data-idx="'+i+'">'+
+    '<div class="chartHead" style="margin-bottom:10px">'+
+      '<div class="chartTitle">'+shortName(w.a)+' / '+shortName(w.b)+'</div>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cfd6da">'+
+        '<input type="checkbox" class="alarmEnabled" '+(al.enabled?"checked":"")+'> Включено</label>'+
+    '</div>'+
+    '<div class="miniGrid">'+
+      '<div class="metric"><span>Вход +, %</span><input class="alEntryPlus mono" type="number" step="0.1" value="'+al.entryPlus+'"></div>'+
+      '<div class="metric"><span>Выход +, %</span><input class="alExitPlus mono" type="number" step="0.01" value="'+al.exitPlus+'"></div>'+
+      '<div class="metric"><span>Вход −, %</span><input class="alEntryMinus mono" type="number" step="0.1" value="'+al.entryMinus+'"></div>'+
+      '<div class="metric"><span>Выход −, %</span><input class="alExitMinus mono" type="number" step="0.01" value="'+al.exitMinus+'"></div>'+
+    '</div>'+
+    '<div class="note" style="margin-top:8px">Текущее расхождение: <b class="alSpread mono">…</b> · Статус: <span class="alState small">'+alStateLabel(al.state)+'</span></div>'+
+  '</div>';
+}
+
+function renderAlerts(){
+  const list=getWatchlist();
+  const container=$("alertList");
+  if(!list.length){
+    container.innerHTML='<div class="panel"><div class="note">Пока пусто. Добавьте пару в Watchlist (★ В избранное или 🔔 Добавить пару в Alerts на вкладке Pair Lab), чтобы настроить оповещения по ней.</div></div>';
+    return;
+  }
+  container.innerHTML=list.map((w,i)=>alertCardHtml(w,i)).join("");
+}
+
+function updateAlertEnvStatus(){
+  const tg=!!(window.Telegram&&window.Telegram.WebApp);
+  const notif=("Notification" in window)?Notification.permission:"не поддерживается браузером";
+  $("alertEnvStatus").textContent="Telegram Mini App: "+(tg?"обнаружен ✓":"нет")+" · Уведомления браузера: "+notif;
+}
+
+$("alertTestSound").onclick=()=>playBeep(2);
+$("alertEnableNotif").onclick=async()=>{
+  if(!("Notification" in window)){alert("Этот браузер не поддерживает системные уведомления.");return}
+  try{await Notification.requestPermission()}catch(e){}
+  updateAlertEnvStatus();
+};
+
+$("alertList").addEventListener("change",e=>{
+  const card=e.target.closest(".alertCard");
+  if(!card)return;
+  const idx=Number(card.dataset.idx);
+  const list=getWatchlist();
+  const w=list[idx];
+  if(!w)return;
+  const al=Object.assign(defaultAlarm(),w.alarm||{});
+  if(e.target.classList.contains("alarmEnabled"))al.enabled=e.target.checked;
+  if(e.target.classList.contains("alEntryPlus"))al.entryPlus=parseFloat(e.target.value)||0;
+  if(e.target.classList.contains("alExitPlus"))al.exitPlus=parseFloat(e.target.value)||0;
+  if(e.target.classList.contains("alEntryMinus"))al.entryMinus=parseFloat(e.target.value)||0;
+  if(e.target.classList.contains("alExitMinus"))al.exitMinus=parseFloat(e.target.value)||0;
+  w.alarm=al;
+  list[idx]=w;
+  setWatchlist(list);
+});
+
+// ---------- sound + toast + notification + Telegram haptics ----------
+
+function playBeep(times){
+  times=times||2;
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    let t=ctx.currentTime;
+    for(let i=0;i<times;i++){
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type="sine";osc.frequency.value=880;
+      gain.gain.setValueAtTime(0.001,t);
+      gain.gain.exponentialRampToValueAtTime(0.3,t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001,t+0.28);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);osc.stop(t+0.3);
+      t+=0.38;
+    }
+  }catch(e){console.error("beep failed",e)}
+}
+
+function showToast(text){
+  let box=document.getElementById("alertToastBox");
+  if(!box){
+    box=document.createElement("div");
+    box.id="alertToastBox";
+    box.style.cssText="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;gap:6px;align-items:center;width:92%;max-width:420px";
+    document.body.appendChild(box);
+  }
+  const t=document.createElement("div");
+  t.textContent=text;
+  t.style.cssText="background:#161d22;border:1px solid #35ff68;color:#eee;padding:10px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px #000a;text-align:center";
+  box.appendChild(t);
+  setTimeout(()=>t.remove(),7000);
+}
+
+function triggerAlarm(text){
+  playBeep();
+  showToast("🔔 "+text);
+  if("Notification" in window&&Notification.permission==="granted"){
+    try{new Notification("Pair Trading Alert",{body:text})}catch(e){}
+  }
+  if(window.Telegram&&window.Telegram.WebApp){
+    try{
+      const tg=window.Telegram.WebApp;
+      if(tg.HapticFeedback)tg.HapticFeedback.notificationOccurred("warning");
+    }catch(e){}
+  }
+}
+
+// ---------- poll loop: checks all enabled alarms and (optionally) auto-trades ----------
+
+async function checkAlarms(){
+  const list=getWatchlist();
+  let changed=false;
+  for(let i=0;i<list.length;i++){
+    const w=list[i];
+    const al=w.alarm;
+    if(!al||!al.enabled)continue;
+    let spread;
+    try{
+      const [tA,tB]=await Promise.all([fetchTicker(w.a),fetchTicker(w.b)]);
+      const pctA=(tA-w.baseA)/w.baseA*100,pctB=(tB-w.baseB)/w.baseB*100;
+      spread=pctA-pctB;
+    }catch(err){console.error("alarm check failed for",w.a,w.b,err);continue}
+
+    const card=document.querySelector('.alertCard[data-idx="'+i+'"]');
+    if(card){
+      const spanEl=card.querySelector(".alSpread");
+      if(spanEl){spanEl.textContent=pctFmt(spread);spanEl.className="alSpread mono "+(spread>0?"positive":spread<0?"negative":"neutral")}
+    }
+
+    const pairLabel=shortName(w.a)+"/"+shortName(w.b);
+    let event=null;
+    if(al.state==="idle"){
+      if(spread>=al.entryPlus){al.state="holdingPlus";event="entryPlus"}
+      else if(spread<=al.entryMinus){al.state="holdingMinus";event="entryMinus"}
+    }else if(al.state==="holdingPlus"&&spread<=al.exitPlus){
+      al.state="idle";event="exitPlus"
+    }else if(al.state==="holdingMinus"&&spread>=al.exitMinus){
+      al.state="idle";event="exitMinus"
+    }
+    if(card){
+      const stEl=card.querySelector(".alState");
+      if(stEl)stEl.textContent=alStateLabel(al.state);
+    }
+    if(event){
+      const verb=(event==="entryPlus"||event==="entryMinus")?"ВХОД":"ВЫХОД";
+      triggerAlarm(verb+" "+pairLabel+": расхождение "+pctFmt(spread));
+      changed=true;
+      maybeAutoTrade(w,event,spread);
+    }
+  }
+  if(changed)setWatchlist(list);
+}
+setInterval(checkAlarms,20000);
+
+// =====================================================================
+// AUTO-TRADE — OKX / Bybit API keys, order placement on the same
+// entry/exit events as Alerts above. TEST mode never sends real orders.
+// =====================================================================
+
+const LS_APIKEYS="ptt_apikeys_v1";
+const LS_ORDERLOG="ptt_orderlog_v1";
+
+function getApiKeys(){
+  try{return JSON.parse(localStorage.getItem(LS_APIKEYS)||"null")||{okx:{},bybit:{}}}catch(e){return{okx:{},bybit:{}}}
+}
+function setApiKeys(v){try{localStorage.setItem(LS_APIKEYS,JSON.stringify(v))}catch(e){}}
+
+function loadApiKeysIntoFields(){
+  const k=getApiKeys();
+  $("okxApiKey").value=(k.okx&&k.okx.apiKey)||"";
+  $("okxApiSecret").value=(k.okx&&k.okx.secret)||"";
+  $("okxApiPass").value=(k.okx&&k.okx.passphrase)||"";
+  $("okxTdMode").value=(k.okx&&k.okx.tdMode)||"cross";
+  $("bybitApiKey").value=(k.bybit&&k.bybit.apiKey)||"";
+  $("bybitApiSecret").value=(k.bybit&&k.bybit.secret)||"";
+}
+$("saveApiKeysBtn").onclick=()=>{
+  setApiKeys({
+    okx:{apiKey:$("okxApiKey").value.trim(),secret:$("okxApiSecret").value.trim(),passphrase:$("okxApiPass").value.trim(),tdMode:$("okxTdMode").value},
+    bybit:{apiKey:$("bybitApiKey").value.trim(),secret:$("bybitApiSecret").value.trim()}
+  });
+  $("apiKeysStatus").textContent="Сохранено в этом браузере: "+formatLocal(Date.now());
+};
+
+function isLiveTradeMode(){
+  return $("tradeModeLive").checked&&$("tradeLiveConfirm").checked;
+}
+
+function defaultAuto(){
+  return {enabled:false,exchange:"OKX",orderType:"market",sideA:"buy",qtyA:"",sideB:"sell",qtyB:""};
+}
+function oppositeSide(s){return s==="buy"?"sell":"buy"}
+
+function autoCardHtml(w,i){
+  const at=Object.assign(defaultAuto(),w.auto||{});
+  return '<div class="panel autoCard" data-idx="'+i+'">'+
+    '<div class="chartHead" style="margin-bottom:10px">'+
+      '<div class="chartTitle">'+shortName(w.a)+' / '+shortName(w.b)+'</div>'+
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#cfd6da">'+
+        '<input type="checkbox" class="autoEnabled" '+(at.enabled?"checked":"")+'> Авто-сделки</label>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="field"><label>Биржа</label><select class="autoExchange">'+
+        '<option value="OKX"'+(at.exchange==="OKX"?" selected":"")+'>OKX</option>'+
+        '<option value="BYBIT"'+(at.exchange==="BYBIT"?" selected":"")+'>Bybit</option>'+
+      '</select></div>'+
+      '<div class="field"><label>Тип ордера</label><select class="autoOrderType">'+
+        '<option value="market"'+(at.orderType==="market"?" selected":"")+'>Market</option>'+
+        '<option value="limit"'+(at.orderType==="limit"?" selected":"")+'>Limit (по текущей цене)</option>'+
+      '</select></div>'+
+    '</div>'+
+    '<div class="row" style="margin-top:8px">'+
+      '<div class="field"><label>'+shortName(w.a)+': сторона / кол-во на вход</label>'+
+        '<div style="display:flex;gap:6px">'+
+          '<select class="autoSideA"><option value="buy"'+(at.sideA==="buy"?" selected":"")+'>Buy</option><option value="sell"'+(at.sideA==="sell"?" selected":"")+'>Sell</option></select>'+
+          '<input class="autoQtyA mono" type="number" step="any" value="'+at.qtyA+'" placeholder="кол-во">'+
+        '</div></div>'+
+      '<div class="field"><label>'+shortName(w.b)+': сторона / кол-во на вход</label>'+
+        '<div style="display:flex;gap:6px">'+
+          '<select class="autoSideB"><option value="buy"'+(at.sideB==="buy"?" selected":"")+'>Buy</option><option value="sell"'+(at.sideB==="sell"?" selected":"")+'>Sell</option></select>'+
+          '<input class="autoQtyB mono" type="number" step="any" value="'+at.qtyB+'" placeholder="кол-во">'+
+        '</div></div>'+
+    '</div>'+
+    '<div class="note" style="margin-top:8px">На выход обе ноги закрываются reduce-only противоположной стороной. Alarm для этой пары должен быть включён на вкладке Alerts.</div>'+
+  '</div>';
+}
+
+function renderAutoTradeList(){
+  const list=getWatchlist();
+  const container=$("autoTradeList");
+  if(!list.length){
+    container.innerHTML='<div class="panel"><div class="note">Пока пусто. Добавьте пару в Watchlist, чтобы настроить авто-торговлю по ней.</div></div>';
+    return;
+  }
+  container.innerHTML=list.map((w,i)=>autoCardHtml(w,i)).join("");
+}
+
+$("autoTradeList").addEventListener("change",e=>{
+  const card=e.target.closest(".autoCard");
+  if(!card)return;
+  const idx=Number(card.dataset.idx);
+  const list=getWatchlist();
+  const w=list[idx];
+  if(!w)return;
+  const at=Object.assign(defaultAuto(),w.auto||{});
+  if(e.target.classList.contains("autoEnabled"))at.enabled=e.target.checked;
+  if(e.target.classList.contains("autoExchange"))at.exchange=e.target.value;
+  if(e.target.classList.contains("autoOrderType"))at.orderType=e.target.value;
+  if(e.target.classList.contains("autoSideA"))at.sideA=e.target.value;
+  if(e.target.classList.contains("autoQtyA"))at.qtyA=e.target.value;
+  if(e.target.classList.contains("autoSideB"))at.sideB=e.target.value;
+  if(e.target.classList.contains("autoQtyB"))at.qtyB=e.target.value;
+  w.auto=at;
+  list[idx]=w;
+  setWatchlist(list);
+});
+
+// ---------- order log ----------
+
+function getOrderLog(){try{return JSON.parse(localStorage.getItem(LS_ORDERLOG)||"[]")}catch(e){return[]}}
+function setOrderLog(v){try{localStorage.setItem(LS_ORDERLOG,JSON.stringify(v.slice(-50)))}catch(e){}}
+function logOrder(entry){
+  const log=getOrderLog();
+  log.push(entry);
+  setOrderLog(log);
+  renderOrderLog();
+}
+function renderOrderLog(){
+  const box=$("orderLog");
+  if(!box)return;
+  const log=getOrderLog();
+  if(!log.length){box.textContent="Пока пусто.";return}
+  box.textContent=log.slice().reverse().map(e=>{
+    const t=formatLocal(e.ts);
+    const mode=e.live?"LIVE":"TEST";
+    const res=e.error?"ОШИБКА: "+e.error:(e.result&&e.result.test?"тест, не отправлено":"ок");
+    return "["+t+"] "+mode+" "+e.pair+" "+e.event+" · "+e.exchange+" "+e.instId+" "+e.side+" "+e.qty+" ("+e.orderType+(e.reduceOnly?", reduceOnly":"")+") → "+res;
+  }).join("\n\n");
+}
+
+// ---------- HMAC signing (Web Crypto — secret never leaves the browser) ----------
+
+async function hmacSha256Base64(secret,message){
+  const enc=new TextEncoder();
+  const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  const sig=await crypto.subtle.sign("HMAC",key,enc.encode(message));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+async function hmacSha256Hex(secret,message){
+  const enc=new TextEncoder();
+  const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  const sig=await crypto.subtle.sign("HMAC",key,enc.encode(message));
+  return[...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+// ---------- exchange order placement ----------
+
+async function placeOrderOKX(instId,side,ordType,sz,px,tdMode,creds){
+  const body={instId,tdMode:tdMode||"cross",side,ordType:ordType==="limit"?"limit":"market",sz:String(sz)};
+  if(ordType==="limit"&&px!=null)body.px=String(px);
+  const bodyStr=JSON.stringify(body);
+  const ts=new Date().toISOString();
+  const path="/api/v5/trade/order";
+  const sign=await hmacSha256Base64(creds.secret,ts+"POST"+path+bodyStr);
+  const r=await fetch("https://www.okx.com"+path,{
+    method:"POST",
+    headers:{
+      "OK-ACCESS-KEY":creds.apiKey,
+      "OK-ACCESS-SIGN":sign,
+      "OK-ACCESS-TIMESTAMP":ts,
+      "OK-ACCESS-PASSPHRASE":creds.passphrase,
+      "Content-Type":"application/json"
+    },
+    body:bodyStr
+  });
+  const j=await r.json();
+  if(j.code!=="0")throw new Error("OKX: "+j.code+" "+(j.msg||JSON.stringify(j.data||[])));
+  return j;
+}
+
+async function placeOrderBybit(symbol,side,orderType,qty,price,reduceOnly,creds){
+  const body={category:"linear",symbol,side,orderType,qty:String(qty)};
+  if(orderType==="Limit"&&price!=null){body.price=String(price);body.timeInForce="GTC"}
+  if(reduceOnly)body.reduceOnly=true;
+  const bodyStr=JSON.stringify(body);
+  const ts=String(Date.now());
+  const recvWindow="5000";
+  const sign=await hmacSha256Hex(creds.secret,ts+creds.apiKey+recvWindow+bodyStr);
+  const r=await fetch("https://api.bybit.com/v5/order/create",{
+    method:"POST",
+    headers:{
+      "X-BAPI-API-KEY":creds.apiKey,
+      "X-BAPI-SIGN":sign,
+      "X-BAPI-SIGN-TYPE":"2",
+      "X-BAPI-TIMESTAMP":ts,
+      "X-BAPI-RECV-WINDOW":recvWindow,
+      "Content-Type":"application/json"
+    },
+    body:bodyStr
+  });
+  const j=await r.json();
+  if(j.retCode!==0)throw new Error("Bybit: "+j.retCode+" "+(j.retMsg||""));
+  return j;
+}
+
+async function estimateBybitPrice(symbol){
+  const url="https://api.bybit.com/v5/market/tickers?category=linear&symbol="+encodeURIComponent(symbol);
+  const r=await fetch(url);
+  const j=await r.json();
+  if(j.retCode!==0||!j.result||!j.result.list||!j.result.list[0])throw new Error("Bybit ticker error");
+  return Number(j.result.list[0].lastPrice);
+}
+
+async function placeAutoOrder(w,instId,side,qty,reduceOnly,eventType,exchange,orderType,tdMode){
+  const creds=getApiKeys();
+  const live=isLiveTradeMode();
+  let result,error;
+  try{
+    if(exchange==="OKX"){
+      if(!live){
+        result={test:true,payload:{instId,tdMode:tdMode||"cross",side,ordType:orderType,sz:String(qty)}};
+      }else{
+        const px=orderType==="limit"?await fetchTicker(instId):undefined;
+        result=await placeOrderOKX(instId,side,orderType,qty,px,tdMode,creds.okx);
+      }
+    }else{
+      const symbol=toBybitSymbol(instId);
+      const bSide=side==="buy"?"Buy":"Sell";
+      const bType=orderType==="limit"?"Limit":"Market";
+      if(!live){
+        result={test:true,payload:{category:"linear",symbol,side:bSide,orderType:bType,qty:String(qty),reduceOnly}};
+      }else{
+        const price=orderType==="limit"?await estimateBybitPrice(symbol):undefined;
+        result=await placeOrderBybit(symbol,bSide,bType,qty,price,reduceOnly,creds.bybit);
+      }
+    }
+  }catch(e){error=e.message}
+  logOrder({ts:Date.now(),pair:shortName(w.a)+"/"+shortName(w.b),event:eventType,exchange,instId,side,qty,orderType,reduceOnly,live,result,error});
+}
+
+async function maybeAutoTrade(w,eventType){
+  const at=w.auto;
+  if(!at||!at.enabled)return;
+  const isEntry=eventType==="entryPlus"||eventType==="entryMinus";
+  const creds=getApiKeys();
+  const legs=[
+    {instId:w.a,side:isEntry?at.sideA:oppositeSide(at.sideA),qty:at.qtyA},
+    {instId:w.b,side:isEntry?at.sideB:oppositeSide(at.sideB),qty:at.qtyB}
+  ];
+  for(const leg of legs){
+    if(!leg.qty)continue;
+    await placeAutoOrder(w,leg.instId,leg.side,leg.qty,!isEntry,eventType,at.exchange,at.orderType,creds.okx&&creds.okx.tdMode);
+  }
+}
+
+function watchlistRowSkeleton(w,i){
+  return '<div class="wlCard" data-idx="'+i+'">'+
+    '<div class="wlMain">'+
+      '<div class="wlName">'+shortName(w.a)+' / '+shortName(w.b)+'</div>'+
+      '<div class="wlDate">'+formatLocal(w.startMs)+'</div>'+
+    '</div>'+
+    '<div class="wlStats">'+
+      '<b id="wlSpread'+i+'" class="neutral">…</b>'+
+      '<span id="wlGrade'+i+'" class="small">…</span>'+
+    '</div>'+
+    '<div class="wlActions">'+
+      '<button class="wlOpenBtn" data-open="'+i+'" title="Открыть">→</button>'+
+      '<button class="wlRemoveBtn" data-remove="'+i+'" title="Удалить">✕</button>'+
+    '</div>'+
+  '</div>';
+}
+
+async function refreshWatchlistRow(w,i){
+  try{
+    const [tA,tB]=await Promise.all([fetchTicker(w.a),fetchTicker(w.b)]);
+    const pctA=(tA-w.baseA)/w.baseA*100,pctB=(tB-w.baseB)/w.baseB*100;
+    const spread=pctA-pctB;
+    const el=$("wlSpread"+i);
+    if(el){el.textContent=pctFmt(spread);el.className=spread>0?"positive":spread<0?"negative":"neutral"}
+  }catch(err){
+    const el=$("wlSpread"+i);if(el)el.textContent="ошибка";
+  }
+  try{
+    const nowMs=Date.now();
+    const [histA,histB]=await Promise.all([getHourlyCandles(w.a,w.startMs,nowMs),getHourlyCandles(w.b,w.startMs,nowMs)]);
+    const pctHistA=histA.map(c=>({ts:c.ts,pct:(c.close-w.baseA)/w.baseA*100}));
+    const pctHistB=histB.map(c=>({ts:c.ts,pct:(c.close-w.baseB)/w.baseB*100}));
+    const stats=computeWaveStats(pctHistA,pctHistB);
+    const gEl=$("wlGrade"+i);
+    if(gEl)gEl.textContent=stats.waves.length?"Рейтинг "+stats.grade:"—";
+  }catch(err){
+    console.error(err);
+  }
+}
+
+let wlObserver=null;
+const wlLoadedIdx=new Set();
+
+function setupWatchlistObserver(){
+  if(wlObserver)wlObserver.disconnect();
+  wlLoadedIdx.clear();
+  wlObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      const idx=Number(entry.target.dataset.idx);
+      if(entry.isIntersecting){
+        if(!wlLoadedIdx.has(idx)){
+          wlLoadedIdx.add(idx);
+          const w=getWatchlist()[idx];
+          if(w)refreshWatchlistRow(w,idx);
+        }
+      }else{
+        wlLoadedIdx.delete(idx); // re-fetch if it scrolls back into view later
+      }
+    });
+  },{root:null,rootMargin:"0px",threshold:0.3});
+  document.querySelectorAll(".wlCard").forEach(card=>wlObserver.observe(card));
+}
+
+function renderWatchlist(){
+  const list=getWatchlist();
+  const container=$("wlList");
+  if(!list.length){
+    container.innerHTML='<div class="panel"><div class="note">Пока пусто. Откройте пару в Pair Lab, загрузите точку старта и нажмите «★ В избранное».</div></div>';
+    return;
+  }
+  container.innerHTML=list.map((w,i)=>watchlistRowSkeleton(w,i)).join("");
+  setupWatchlistObserver();
+}
+
+$("wlRefresh").onclick=()=>{
+  wlLoadedIdx.clear();
+  const list=getWatchlist();
+  document.querySelectorAll(".wlCard").forEach(card=>{
+    const idx=Number(card.dataset.idx);
+    const w=list[idx];
+    if(w){wlLoadedIdx.add(idx);refreshWatchlistRow(w,idx)}
+  });
+};
+
+$("wlList").addEventListener("click",e=>{
+  const openBtn=e.target.closest("[data-open]");
+  if(openBtn){
+    const idx=Number(openBtn.dataset.open);
+    const w=getWatchlist()[idx];
+    if(w){
+      setPair(w.a,w.b,true);
+      setSelectsFromLocalIso(new Date(w.startMs-new Date().getTimezoneOffset()*60000).toISOString());
+      showPage("lab");
+      loadStartPoint(w.startMs);
+    }
+    return;
+  }
+  const rmBtn=e.target.closest("[data-remove]");
+  if(rmBtn){
+    const idx=Number(rmBtn.dataset.remove);
+    const list=getWatchlist();
+    list.splice(idx,1);
+    setWatchlist(list);
+    renderWatchlist();
+    updateWatchlistButton();
+  }
+});
+
+// ---------- init ----------
+
+$("start").onclick=()=>{
+  const targetMs=getTargetMsFromSelects();
+  if(!Number.isFinite(targetMs)){alert("Неверная дата/время.");return}
+  loadStartPoint(targetMs);
+};
+
+$("spreadChart").addEventListener("wheel",onWheel,{passive:false});
+
+// ---------- crosshair for the spread chart ----------
+
+function hideSyncCrosshair(){
+  $("spreadVLine").style.display="none";
+  $("spreadCross").style.display="none";
+}
+
+function showSyncCrosshairAt(t,mx){
+  if(!settings.crosshair){hideSyncCrosshair();return}
+  const c=$("spreadChart"),geo=c._geo,vline=$("spreadVLine");
+  if(!geo){vline.style.display="none";return}
+  const x=geo.X(t);
+  vline.style.left=x+"px";
+  vline.style.display="block";
+
+  const xagP=nearestPoint(state.hist.xag,t);
+  const clP=nearestPoint(state.hist.cl,t);
+  let label=formatLocal(t);
+  if(xagP)label+="\n"+shortName(pairState.a)+": "+pctFmt(xagP.v!=null?xagP.v:xagP.pct);
+  if(clP)label+="\n"+shortName(pairState.b)+": "+pctFmt(clP.v!=null?clP.v:clP.pct);
+  if(xagP&&clP){
+    const xv=xagP.v!=null?xagP.v:xagP.pct, cv=clP.v!=null?clP.v:clP.pct;
+    label+="\nSpread: "+pctFmt(xv-cv);
+  }
+
+  const activeEl=$("spreadCross"),rect=c.getBoundingClientRect();
+  activeEl.textContent=label;
+  activeEl.style.display="block";
+  activeEl.style.left="0px";
+  const tw=activeEl.offsetWidth;
+  let left=mx+10;
+  if(left+tw>rect.width-4)left=Math.max(4,rect.width-tw-4);
+  activeEl.style.left=left+"px";
+  activeEl.style.top="8px";
+}
+
+function attachSyncCrosshair(canvas){
+  canvas.addEventListener("mousemove",e=>{
+    const geo=canvas._geo;
+    if(!geo){hideSyncCrosshair();return}
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left;
+    const t=geo.tMin+((mx-geo.ml)/(geo.w-geo.ml-geo.mr))*(geo.tMax-geo.tMin);
+    if(!isFinite(t)){hideSyncCrosshair();return}
+    showSyncCrosshairAt(t,mx);
+  });
+  canvas.addEventListener("mouseleave",hideSyncCrosshair);
+}
+attachSyncCrosshair($("spreadChart"));
+
+// ---------- display settings wiring ----------
+
+$("optCrosshair").onchange=e=>{settings.crosshair=e.target.checked;if(!settings.crosshair)hideSyncCrosshair()};
+$("optPoints").onchange=e=>{settings.points=e.target.checked;renderCharts()};
+$("optWaves").onchange=e=>{settings.waves=e.target.checked;renderCharts()};
+$("optLineWidth").oninput=e=>{
+  settings.lineWidth=Number(e.target.value);
+  $("lineWidthVal").textContent=settings.lineWidth;
+  renderCharts();
+};
+document.querySelectorAll(".tmMini").forEach(btn=>{
+  btn.onclick=()=>shiftStart(Number(btn.dataset.shift));
+});
+
+function updateFsLabels(){
+  const startTxt=state.startMs!=null?formatLocal(state.startMs):"—";
+  const nowTxt=formatLocal(Date.now());
+  const txt="Старт: "+startTxt+" · Сейчас: "+nowTxt;
+  $("perfFsLabel").textContent=txt;
+  $("spreadFsLabel").textContent=txt;
+}
+setInterval(updateFsLabels,1000);
+updateFsLabels();
+
+function toggleFullscreen(panelId,btnId){
+  const panel=$(panelId),btn=$(btnId);
+  const isFull=panel.classList.toggle("fullscreenChart");
+  document.body.classList.toggle("noScroll",isFull);
+  btn.textContent=isFull?"✕":"⛶";
+  btn.title=isFull?"Свернуть":"На весь экран";
+  const fsLabelId=panelId==="perfPanel"?"perfFsLabel":"spreadFsLabel";
+  $(fsLabelId).style.display=isFull?"block":"none";
+  // give the browser a frame to apply the new layout size before redrawing
+  requestAnimationFrame(()=>requestAnimationFrame(renderLabCharts));
+}
+$("perfExpand").onclick=()=>toggleFullscreen("perfPanel","perfExpand");
+$("spreadExpand").onclick=()=>toggleFullscreen("spreadPanel","spreadExpand");
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    ["perfPanel","spreadPanel"].forEach((id,i)=>{
+      const panel=$(id);
+      if(panel.classList.contains("fullscreenChart")){
+        toggleFullscreen(id,i===0?"perfExpand":"spreadExpand");
+      }
+    });
+  }
+});
+
+window.addEventListener("resize",()=>{
+  renderLabCharts();
+  if(candidateA&&previewCandles.length)drawCandleChart($("candleChart"),previewCandles);
+});
+
+const savedSession=loadSession();
+if(savedSession&&savedSession.a&&savedSession.b){
+  pairState.a=savedSession.a;
+  pairState.b=savedSession.b;
+}
+applyPairLabels();
+const now=new Date();
+const local=new Date(now.getTime()-now.getTimezoneOffset()*60000);
+populateDateTimeSelects();
+if(savedSession&&savedSession.startMs){
+  setSelectsFromLocalIso(new Date(savedSession.startMs-now.getTimezoneOffset()*60000).toISOString());
+}else{
+  setSelectsFromLocalIso(local.toISOString());
+}
+
+connect();
+loadLabCandles();
+if(savedSession&&savedSession.startMs&&savedSession.startMs<=Date.now()){
+  loadStartPoint(savedSession.startMs);
+}
+</script>
+
+<!-- ================= SCANNER / WAVE LAB ENGINE (isolated scope) ================= -->
+<script>
+(function(){
+"use strict";
+// Wave Trading Scanner Core v0.6.1 — синтетика встречает реальность.
+// Изолировано в IIFE и работает через id с префиксом "sc", чтобы не пересекаться
+// ни с одной переменной/функцией/id основного приложения (Pair Lab).
+
+const el=id=>document.getElementById(id);
+
+function setStatus(text,isErr){
+  const s=el("scStatusLine");
+  if(!s)return;
+  s.textContent=text;
+  s.className="status"+(isErr?" err":"");
+}
+
+// ---------------------------------------------------------------------------
+// ENGINE CORE — идентично протестированным синтетикой модулям
+// (wave-engine.js / repeatability.js / class-engine.js)
+// ---------------------------------------------------------------------------
+
+
+function detectWaves(points, config) {
+  const { retracementPercent, maxTradingWave, minWaveFormationMinutes = 0, maxWaveDurationDays = Infinity } = config;
+  const closedWaves = [];
+  let active = null;
+
+  const finalize = (activeWave, closeIdx) => {
+    const magnitude = Math.abs(activeWave.max);
+    const startTime = points[activeWave.startIdx].t;
+    const closeTime = points[closeIdx].t;
+    const durationMinutes = (closeTime - startTime) / 60000;
+    const durationDays = durationMinutes / (60 * 24);
+    return {
+      side: activeWave.side === 1 ? "positive" : "negative",
+      waveMax: activeWave.max,
+      magnitude,
+      startIdx: activeWave.startIdx,
+      maxIdx: activeWave.maxIdx,
+      closeIdx,
+      startTime, maxTime: points[activeWave.maxIdx].t, closeTime,
+      durationMinutes,
+      isExtreme: magnitude > maxTradingWave,
+      isSignificant: durationMinutes >= minWaveFormationMinutes,
+      exceedsMaxDuration: durationDays > maxWaveDurationDays,
+    };
+  };
+
+  for (let i = 0; i < points.length; i++) {
+    const v = points[i].spread;
+    if (!active) {
+      if (v === 0) continue;
+      active = { side: v > 0 ? 1 : -1, max: v, startIdx: i, maxIdx: i };
+      continue;
+    }
+    const isNewExtreme = active.side === 1 ? v > active.max : v < active.max;
+    if (isNewExtreme) { active.max = v; active.maxIdx = i; }
+    const closeLevel = active.max * (1 - retracementPercent);
+    const isClosed = active.side === 1 ? v <= closeLevel : v >= closeLevel;
+    if (isClosed) {
+      closedWaves.push({ ...finalize(active, i), closeLevel });
+      active = null;
+    }
+  }
+
+  const openWave = active ? {
+    side: active.side === 1 ? "positive" : "negative",
+    waveMax: active.max, magnitude: Math.abs(active.max),
+    startIdx: active.startIdx, maxIdx: active.maxIdx,
+    startTime: points[active.startIdx].t, maxTime: points[active.maxIdx].t,
+    isExtreme: Math.abs(active.max) > maxTradingWave,
+  } : null;
+
+  return { closedWaves, openWave };
+}
+
+function qualifyingWaves(waves) { return waves.filter((w) => !w.isExtreme && w.isSignificant); }
+function checkRepeatability(waves, minTotal = 5) {
+  const qualifying = qualifyingWaves(waves);
+  const positive = qualifying.filter((w) => w.side === "positive");
+  const negative = qualifying.filter((w) => w.side === "negative");
+  return { positiveCount: positive.length, negativeCount: negative.length, total: positive.length + negative.length, met: (positive.length + negative.length) >= minTotal, qualifying };
+}
+
+const DEFAULT_BANDS = [
+  { class: 1, maxWidth: 10 }, { class: 2, maxWidth: 20 }, { class: 3, maxWidth: 30 },
+  { class: 4, maxWidth: 40 }, { class: 5, maxWidth: 50 },
+];
+function classify(waves, bands, minQualifying = 5) {
+  const qualifying = waves.filter((w) => !w.isExtreme && w.isSignificant);
+  if (qualifying.length < minQualifying) return { class: null, reason: "insufficient_qualifying_waves", qualifyingCount: qualifying.length };
+  const magnitudes = qualifying.map((w) => w.magnitude);
+  const maxMag = Math.max(...magnitudes), minMag = Math.min(...magnitudes);
+  const relativeRange = ((maxMag - minMag) / maxMag) * 100;
+  for (const band of bands) { if (relativeRange <= band.maxWidth) return { class: band.class, relativeRange, qualifyingCount: qualifying.length }; }
+  return { class: null, relativeRange, reason: "range_exceeds_class_5", qualifyingCount: qualifying.length };
+}
+
+// ---------------------------------------------------------------------------
+// DATA LAYER — Bybit v5 public kline endpoint (works client-side, no CORS issue)
+// ---------------------------------------------------------------------------
+
+const API = "https://api.bybit.com/v5";
+
+async function fetchKlineBatch(symbol, intervalMinutes, startMs, endMs) {
+  const url = `${API}/market/kline?category=linear&symbol=${symbol}&interval=${intervalMinutes}&start=${startMs}&end=${endMs}&limit=200`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.retCode !== 0 || !d.result || !d.result.list) throw new Error(`Bybit error for ${symbol}: ${d.retMsg || "нет данных"}`);
+  // Bybit returns newest-first: [startTime, open, high, low, close, volume, turnover]
+  return d.result.list.map(row => ({ t: parseInt(row[0], 10), close: parseFloat(row[4]) })).reverse();
+}
+
+async function fetchFullHistory(symbol, intervalMinutes, fromMs, toMs, onProgress) {
+  const barMs = intervalMinutes * 60 * 1000;
+  const batchSpanMs = barMs * 199; // 200 candles per request
+  let cursor = fromMs;
+  const all = [];
+  while (cursor < toMs) {
+    const batchEnd = Math.min(cursor + batchSpanMs, toMs);
+    const batch = await fetchKlineBatch(symbol, intervalMinutes, cursor, batchEnd);
+    all.push(...batch);
+    if (onProgress) onProgress(symbol, all.length);
+    cursor = batchEnd + barMs;
+    await new Promise(res => setTimeout(res, 150)); // be polite to the public rate limit
+  }
+  // de-dupe by timestamp, keep chronological order
+  const seen = new Set();
+  return all.filter(p => { if (seen.has(p.t)) return false; seen.add(p.t); return true; }).sort((a,b)=>a.t-b.t);
+}
+
+function findClosestPrice(series, targetMs) {
+  let best = null, bestDiff = Infinity;
+  for (const p of series) {
+    const diff = Math.abs(p.t - targetMs);
+    if (diff < bestDiff) { best = p; bestDiff = diff; }
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
+// UI WIRING
+// ---------------------------------------------------------------------------
+
+function fmtTime(ms) {
+  return new Date(ms).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+
+function renderResults(closedWaves, repeat, cls, hiddenCount, totalCount) {
+  el("scResultsPanel").style.display = "";
+  el("scWavesPanel").style.display = "";
+
+  el("scStatTotal").textContent = closedWaves.length;
+  el("scStatSplit").textContent = `${repeat.positiveCount} × ${repeat.negativeCount}`;
+  el("scStatRepeat").textContent = repeat.met ? "подтверждена ✓" : `недостаточно (${repeat.total}/5)`;
+  el("scStatRepeat").style.color = repeat.met ? "var(--safe)" : "var(--t2)";
+
+  if (cls.class) {
+    el("scStatClass").innerHTML = `<span class="class-badge" style="background:rgba(79,209,197,.15);color:var(--safe);">${cls.class}</span> <span class="mono" style="font-size:12px;color:var(--ink-dim);">±${cls.relativeRange.toFixed(1)}%</span>`;
+  } else {
+    el("scStatClass").innerHTML = `<span class="mono" style="font-size:13px;color:var(--ink-faint);">${cls.reason === "insufficient_qualifying_waves" ? "нет Class (мало волн)" : "нет Class (диапазон > 50%)"}</span>`;
+  }
+
+  el("scFilterNote").textContent = hiddenCount > 0
+    ? `Показано ${closedWaves.length} из ${totalCount} волн — скрыто ${hiddenCount} мельче порога.`
+    : `Показаны все ${totalCount} найденных волн — ни одна не мельче порога.`;
+
+  const body = el("scWavesBody");
+  body.innerHTML = closedWaves.map((w, i) => {
+    const rowClasses = [w.isExtreme ? "extreme" : "", !w.isSignificant ? "insignificant" : ""].filter(Boolean).join(" ");
+    const sideClass = w.side === "positive" ? "side-pos" : "side-neg";
+    const flags = [
+      w.isExtreme ? '<span class="flag extreme">EXTREME</span>' : "",
+      !w.isSignificant ? '<span class="flag short">&lt;5мин</span>' : "",
+    ].join("");
+    return `<tr class="${rowClasses}">
+      <td>${i + 1}</td>
+      <td class="${sideClass}">${w.side}</td>
+      <td>${w.waveMax.toFixed(2)}%</td>
+      <td>${fmtTime(w.startTime)}</td>
+      <td>${fmtTime(w.maxTime)}</td>
+      <td>${fmtTime(w.closeTime)}</td>
+      <td>${Math.round(w.durationMinutes)}</td>
+      <td>${flags || "—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Min-wave display filter — purely client-side, re-applied instantly on the
+// slider without re-fetching anything from Bybit.
+// ---------------------------------------------------------------------------
+let rawClosedWaves = [];
+
+function currentMinWavePct(){
+  return parseFloat(el("scMinWavePct").value) || 0;
+}
+
+function applyMinWaveFilter(){
+  if (!rawClosedWaves.length) return;
+  const threshold = currentMinWavePct();
+  const filtered = rawClosedWaves.filter(w => w.magnitude >= threshold);
+  const hidden = rawClosedWaves.length - filtered.length;
+  const repeat = checkRepeatability(filtered);
+  const cls = classify(filtered, DEFAULT_BANDS);
+  renderResults(filtered, repeat, cls, hidden, rawClosedWaves.length);
+}
+
+el("scMinWavePct").addEventListener("input", () => {
+  el("scMinWavePctVal").textContent = currentMinWavePct().toFixed(1);
+  applyMinWaveFilter();
+});
+
+async function run() {
+  const sym1 = el("scSym1").value.trim().toUpperCase();
+  const sym2 = el("scSym2").value.trim().toUpperCase();
+  const baselineStr = el("scBaseline").value;
+  const lookbackDays = parseFloat(el("scLookback").value) || 90;
+  const retracementPercent = (parseFloat(el("scRetracement").value) || 75) / 100;
+  const maxTradingWave = parseFloat(el("scMaxWave").value) || 39;
+  const minWaveFormationMinutes = parseFloat(el("scMinFormation").value) || 0;
+
+  if (!baselineStr) { setStatus("Укажите дату точки 0", true); return; }
+  const point0Ms = new Date(baselineStr).getTime();
+  const now = Date.now();
+  const windowStartMs = now - lookbackDays * 24 * 60 * 60 * 1000;
+  const fetchFromMs = Math.min(point0Ms, windowStartMs);
+
+  el("scRunBtn").disabled = true;
+  try {
+    setStatus(`Загружаю историю ${sym1}…`);
+    const series1 = await fetchFullHistory(sym1, 60, fetchFromMs, now, (s, n) => setStatus(`Загружаю ${s}: ${n} свечей…`));
+    setStatus(`Загружаю историю ${sym2}…`);
+    const series2 = await fetchFullHistory(sym2, 60, fetchFromMs, now, (s, n) => setStatus(`Загружаю ${s}: ${n} свечей…`));
+
+    const base1 = findClosestPrice(series1, point0Ms);
+    const base2 = findClosestPrice(series2, point0Ms);
+    if (!base1 || !base2) throw new Error("не удалось найти цену в точке 0 — попробуйте другую дату");
+
+    // build spread series over just the analysis window, relative to Point 0
+    const map2 = new Map(series2.map(p => [p.t, p.close]));
+    const points = [];
+    for (const p of series1) {
+      if (p.t < windowStartMs) continue;
+      const c2 = map2.get(p.t);
+      if (c2 === undefined) continue;
+      const pctA = (p.close / base1.close - 1) * 100;
+      const pctB = (c2 / base2.close - 1) * 100;
+      points.push({ t: p.t, spread: pctA - pctB });
+    }
+    if (points.length < 10) throw new Error("слишком мало совпадающих по времени свечей — проверьте тикеры");
+
+    setStatus(`Ищу волны на ${points.length} точках…`);
+    const { closedWaves } = detectWaves(points, { retracementPercent, maxTradingWave, minWaveFormationMinutes, maxWaveDurationDays: 30 });
+    rawClosedWaves = closedWaves;
+    applyMinWaveFilter();
+    setStatus(`Готово — ${sym1}/${sym2}, точка 0: ${fmtTime(point0Ms)}, база: ${base1.close} / ${base2.close}`);
+  } catch (e) {
+    setStatus("Ошибка: " + e.message, true);
+  } finally {
+    el("scRunBtn").disabled = false;
+  }
+}
+
+el("scRunBtn").addEventListener("click", run);
+
+// ---------------------------------------------------------------------------
+// Bridge to the main app: called from the "🧪 Проверить пару в Scanner" button
+// on the Pair Lab tab, so the Scanner opens pre-filled with that exact pair.
+// ---------------------------------------------------------------------------
+function setPairAndRun(sym1, sym2, baselineIso){
+  if(sym1)el("scSym1").value=sym1;
+  if(sym2)el("scSym2").value=sym2;
+  if(baselineIso)el("scBaseline").value=baselineIso;
+  setStatus("Пара подставлена из Pair Lab: "+el("scSym1").value+" / "+el("scSym2").value+" — запускаю расчёт…");
+  run();
+}
+window.ScannerWaveLab = { setPairAndRun, run };
+
+(function init() {
+  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  d.setMinutes(0, 0, 0);
+  el("scBaseline").value = d.toISOString().slice(0, 16);
+})();
+
+})();
+</script>
+</body>
+</html>
